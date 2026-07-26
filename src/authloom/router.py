@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Response
+from fastapi import APIRouter, HTTPException, Response, status
 
 from authloom.dtos import (
     AuthHttpResDto,
@@ -25,6 +25,7 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
                 "authloom.auth",
                 value=session.token_raw,
                 httponly=True,
+                expires=session.expires_at,
             )
             return AuthHttpResDto(message="account created successfully", user=user)
         except UserAlreadyExistsException as exc:

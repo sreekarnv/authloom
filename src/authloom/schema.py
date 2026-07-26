@@ -1,8 +1,8 @@
 from cuid2 import cuid_wrapper
-from datetime import datetime
+from sqlalchemy import VARCHAR, ForeignKey, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from sqlalchemy import DATETIME, VARCHAR, func, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, relationship
+from authloom.utils.time import UTCDateTime, utc_now
 
 CUID_GENERATOR = cuid_wrapper()
 
@@ -19,10 +19,10 @@ class User(Base):
     email = mapped_column(VARCHAR, unique=True, index=True)
     password = mapped_column(VARCHAR, deferred=True)
     created_at = mapped_column(
-        DATETIME(timezone=True), nullable=False, server_default=func.now()
+        UTCDateTime(), nullable=False, default=utc_now, server_default=func.now()
     )
     updated_at = mapped_column(
-        DATETIME(timezone=True), server_default=func.now(), onupdate=func.now()
+        UTCDateTime(), default=utc_now, server_default=func.now(), onupdate=utc_now
     )
 
     sessions: Mapped[list["Session"]] = relationship(
@@ -35,13 +35,13 @@ class Session(Base):
 
     id = mapped_column(VARCHAR, primary_key=True, default=CUID_GENERATOR)
     token_hash = mapped_column(VARCHAR(64), unique=True, index=True)
-    expires_at = mapped_column(DATETIME(timezone=True))
-    revoked_at = mapped_column(DATETIME(timezone=True), nullable=True)
+    expires_at = mapped_column(UTCDateTime())
+    revoked_at = mapped_column(UTCDateTime(), nullable=True)
     created_at = mapped_column(
-        DATETIME(timezone=True), nullable=False, server_default=func.now()
+        UTCDateTime(), nullable=False, default=utc_now, server_default=func.now()
     )
 
     user_id = mapped_column(
-        ForeignKey(f"authloom_users.id", ondelete="CASCADE"), index=True
+        ForeignKey("authloom_users.id", ondelete="CASCADE"), index=True
     )
     user: Mapped["User"] = relationship(back_populates="sessions")

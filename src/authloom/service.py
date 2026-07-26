@@ -1,9 +1,8 @@
-import secrets
 import hashlib
+import secrets
+from datetime import timedelta
+
 import email_normalize
-
-from datetime import datetime, timedelta, UTC
-
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
@@ -18,7 +17,8 @@ from authloom.dtos import (
     UserResDto,
 )
 from authloom.exceptions import InvalidCredentialsException, UserAlreadyExistsException
-from authloom.schema import User, Session
+from authloom.schema import Session, User
+from authloom.utils.time import utc_now
 
 
 class AuthLoom:
@@ -29,10 +29,8 @@ class AuthLoom:
 
     async def __generate_session_token(self) -> tuple[str, str]:
         token = secrets.token_urlsafe(32)
-        print(f"Original Token: {token}")
 
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        print(f"Hashed Token: {token_hash}")
 
         return token, token_hash
 
@@ -74,7 +72,7 @@ class AuthLoom:
             auth_session = Session(
                 token_hash=token_hash,
                 user_id=user.id,
-                expires_at=datetime.now(UTC) + timedelta(days=7),
+                expires_at=utc_now() + timedelta(days=7),
             )
             session.add(auth_session)
 
