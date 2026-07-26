@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Response, status, Request
 
 from authloom.dtos import (
     AuthHttpResDto,
@@ -56,5 +56,14 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
             expires=session.expires_at,
         )
         return AuthHttpResDto(message="logged in successfully", user=user)
+
+    @router.post("/signout", status_code=status.HTTP_204_NO_CONTENT)
+    async def signout(request: Request, response: Response):
+        token_raw = request.cookies.get("authloom.auth")
+        if not token_raw: return None
+
+        await auth.signout(token_raw=token_raw)
+
+        response.delete_cookie("authloom.auth")
 
     return router

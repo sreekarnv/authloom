@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import timedelta
+from datetime import timedelta, datetime, UTC
 
 import email_normalize
 from argon2 import PasswordHasher
@@ -27,12 +27,13 @@ class AuthLoom:
         self.email_normalizer = email_normalize.Normalizer()
         self.password_hasher = PasswordHasher()
 
-    async def __generate_session_token(self) -> tuple[str, str]:
+    def __hash_session_token(self, token_raw: str) -> str:
+        return hashlib.sha256(token_raw.encode("utf-8")).hexdigest()
+
+    def __generate_session_token(self) -> tuple[str, str]:
         token = secrets.token_urlsafe(32)
+        return token, self.__hash_session_token(token)
 
-        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-        return token, token_hash
 
     async def signup(
         self, input: SignupSrvInputDto
@@ -131,3 +132,18 @@ class AuthLoom:
                 token_raw=token_raw,
                 expires_at=auth_session.expires_at,
             )
+
+    async def signout(self, token_raw: str) -> None:
+        token_hash = self.__hash_session_token(token_raw)
+
+        async with self.session_factory() as session:
+            q = await session.execute(
+                select(Session).where(Session.token_hash == token_hash, Session.revoked_at.is_(None))
+            )
+
+            auth_session = q.scalar_one_or_none()
+
+            if auth_session == None: return
+
+            auth_session.revoked_at = utc_now()
+            await session.commit()
