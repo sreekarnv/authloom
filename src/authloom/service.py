@@ -1,4 +1,9 @@
+import secrets
+import hashlib
 import email_normalize
+
+from datetime import datetime, timedelta, UTC
+
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
@@ -6,9 +11,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import undefer
 
-from authloom.dtos import SigninSrvInputDto, SignupSrvInputDto, UserResDto
+from authloom.dtos import (
+    SessionResDto,
+    SigninSrvInputDto,
+    SignupSrvInputDto,
+    UserResDto,
+)
 from authloom.exceptions import InvalidCredentialsException, UserAlreadyExistsException
-from authloom.schema import User
+from authloom.schema import User, Session
 
 
 class AuthLoom:
@@ -17,7 +27,18 @@ class AuthLoom:
         self.email_normalizer = email_normalize.Normalizer()
         self.password_hasher = PasswordHasher()
 
-    async def signup(self, input: SignupSrvInputDto) -> UserResDto:
+    async def __generate_session_token(self) -> tuple[str, str]:
+        token = secrets.token_urlsafe(32)
+        print(f"Original Token: {token}")
+
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        print(f"Hashed Token: {token_hash}")
+
+        return token, token_hash
+
+    async def signup(
+        self, input: SignupSrvInputDto
+    ) -> tuple[UserResDto, SessionResDto]:
         normalized_result = await self.email_normalizer.normalize(input.email)
 
         async with self.session_factory() as session:
@@ -49,7 +70,27 @@ class AuthLoom:
 
             await session.refresh(user)
 
-            return UserResDto.model_validate(user)
+            token_raw, token_hash = await self.__generate_session_token()
+            auth_session = Session(
+                token_hash=token_hash,
+                user_id=user.id,
+                expires_at=datetime.now(UTC) + timedelta(days=7),
+            )
+            session.add(auth_session)
+
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                raise ValueError() from None
+
+            await session.refresh(auth_session)
+
+            return UserResDto.model_validate(user), SessionResDto(
+                id=auth_session.id,
+                token_raw=token_raw,
+                expires_at=auth_session.expires_at,
+            )
 
     async def signin(self, input: SigninSrvInputDto) -> UserResDto:
         normalized_result = await self.email_normalizer.normalize(input.email)

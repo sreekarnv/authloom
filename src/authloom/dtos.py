@@ -14,7 +14,6 @@ class UserResDto(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-
 class SignupHttpReqDto(BaseModel):
     name: str
     email: EmailStr
@@ -43,3 +42,9 @@ class SignupSrvInputDto(BaseModel):
 class SigninSrvInputDto(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1)
+
+
+class SessionResDto(BaseModel):
+    id: str
+    token_raw: str
+    expires_at: datetime
