@@ -59,14 +59,11 @@ class AuthLoom:
             )
 
             session.add(user)
-
             try:
-                await session.commit()
+                await session.flush()
             except IntegrityError:
                 await session.rollback()
                 raise UserAlreadyExistsException() from None
-
-            await session.refresh(user)
 
             token_raw, token_hash = self.__generate_session_token()
             auth_session = Session(
@@ -74,6 +71,7 @@ class AuthLoom:
                 user_id=user.id,
                 expires_at=utc_now() + timedelta(days=7),
             )
+
             session.add(auth_session)
 
             try:
@@ -82,6 +80,7 @@ class AuthLoom:
                 await session.rollback()
                 raise ValueError() from None
 
+            await session.refresh(user)
             await session.refresh(auth_session)
 
             return UserResDto.model_validate(user), SessionResDto(
