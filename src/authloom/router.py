@@ -1,12 +1,16 @@
-from fastapi import APIRouter, HTTPException, Response, status, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from authloom.dtos import (
     AuthHttpResDto,
     SigninSrvInputDto,
     SignupHttpReqDto,
     SignupSrvInputDto,
+    UserResDto,
 )
 from authloom.exceptions import InvalidCredentialsException, UserAlreadyExistsException
+from authloom.schema import User
 from authloom.service import AuthLoom
 
 
@@ -42,7 +46,7 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
             user, session = await auth.signin(
                 input=SigninSrvInputDto(**input.model_dump())
             )
-            
+
         except InvalidCredentialsException as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -60,17 +64,17 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
     @router.post("/signout", status_code=status.HTTP_204_NO_CONTENT)
     async def signout(request: Request, response: Response):
         token_raw = request.cookies.get("authloom.auth")
-        if not token_raw: return None
+        if not token_raw:
+            return None
 
         await auth.signout(token_raw=token_raw)
 
         response.delete_cookie("authloom.auth")
 
     @router.get("/me", status_code=status.HTTP_200_OK)
-    async def get_current_user(request: Request):
-        token_raw = request.cookies.get("authloom.auth")
-        if not token_raw: return None
-
-        return await auth.get_current_user(token_raw=token_raw)
+    async def get_current_user(
+        user: Annotated[User, Depends(auth.require_current_user)],
+    ):
+        return UserResDto.model_validate(user)
 
     return router
