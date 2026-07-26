@@ -37,14 +37,24 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
     @router.post(
         "/signin", status_code=status.HTTP_200_OK, response_model=AuthHttpResDto
     )
-    async def signin(input: SigninSrvInputDto):
+    async def signin(input: SigninSrvInputDto, response: Response):
         try:
-            user = await auth.signin(input=SigninSrvInputDto(**input.model_dump()))
+            user, session = await auth.signin(
+                input=SigninSrvInputDto(**input.model_dump())
+            )
+            
         except InvalidCredentialsException as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="invalid credentials",
             ) from exc
+
+        response.set_cookie(
+            "authloom.auth",
+            value=session.token_raw,
+            httponly=True,
+            expires=session.expires_at,
+        )
         return AuthHttpResDto(message="logged in successfully", user=user)
 
     return router

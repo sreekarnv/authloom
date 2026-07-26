@@ -90,7 +90,7 @@ class AuthLoom:
                 expires_at=auth_session.expires_at,
             )
 
-    async def signin(self, input: SigninSrvInputDto) -> UserResDto:
+    async def signin(self, input: SigninSrvInputDto) -> tuple[UserResDto, SessionResDto]:
         normalized_result = await self.email_normalizer.normalize(input.email)
 
         async with self.session_factory() as session:
@@ -110,4 +110,24 @@ class AuthLoom:
             except VerifyMismatchError:
                 raise InvalidCredentialsException() from None
 
-            return UserResDto.model_validate(user)
+            token_raw, token_hash = await self.__generate_session_token()
+            auth_session = Session(
+                token_hash=token_hash,
+                user_id=user.id,
+                expires_at=utc_now() + timedelta(days=7),
+            )
+            session.add(auth_session)
+
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                raise ValueError() from None
+
+            await session.refresh(auth_session)
+
+            return UserResDto.model_validate(user), SessionResDto(
+                id=auth_session.id,
+                token_raw=token_raw,
+                expires_at=auth_session.expires_at,
+            )
