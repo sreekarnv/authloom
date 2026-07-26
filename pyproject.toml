@@ -7,7 +7,14 @@ authors = [
     { name = "Sreekar Nutulapati", email = "sreekarnv1@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "argon2-cffi>=25.1.0",
+    "cuid2>=2.0.1",
+    "email-normalize>=3.1.0",
+    "fastapi>=0.140.0",
+    "pydantic[email]>=2.13.4",
+    "sqlalchemy>=2.0.51",
+]
 license = "Apache-2.0"
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
@@ -20,6 +27,9 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "ruff>=0.16.0",
+]
+sqlalchemy = [
+    "sqlalchemy>=2.0.51",
 ]
 
 [tool.ruff]
@@ -37,3 +47,6 @@ select = [
     "ASYNC",
     "S",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"examples/**/test_*.py" = ["S101", "S105"]
