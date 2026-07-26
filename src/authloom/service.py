@@ -69,7 +69,7 @@ class AuthLoom:
 
             await session.refresh(user)
 
-            token_raw, token_hash = await self.__generate_session_token()
+            token_raw, token_hash = self.__generate_session_token()
             auth_session = Session(
                 token_hash=token_hash,
                 user_id=user.id,
@@ -111,7 +111,7 @@ class AuthLoom:
             except VerifyMismatchError:
                 raise InvalidCredentialsException() from None
 
-            token_raw, token_hash = await self.__generate_session_token()
+            token_raw, token_hash = self.__generate_session_token()
             auth_session = Session(
                 token_hash=token_hash,
                 user_id=user.id,
