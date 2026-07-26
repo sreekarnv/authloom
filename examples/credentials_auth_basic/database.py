@@ -4,7 +4,7 @@ from typing_extensions import AsyncGenerator
 DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 engine = create_async_engine(
-    DATABASE_URL, echo=True, connect_args={"check_same_thread": False}
+    DATABASE_URL, echo=False, connect_args={"check_same_thread": False}
 )
 
 AsyncSessionLocal = async_sessionmaker(
