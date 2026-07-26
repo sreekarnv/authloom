@@ -5,3 +5,7 @@ class UserAlreadyExistsException(Exception):
 
 class InvalidCredentialsException(Exception):
     pass
+
+
+class SessionCreationException(Exception):
+    pass

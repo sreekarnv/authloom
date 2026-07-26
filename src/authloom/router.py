@@ -9,7 +9,11 @@ from authloom.dtos import (
     SignupSrvInputDto,
     UserResDto,
 )
-from authloom.exceptions import InvalidCredentialsException, UserAlreadyExistsException
+from authloom.exceptions import (
+    InvalidCredentialsException,
+    SessionCreationException,
+    UserAlreadyExistsException,
+)
 from authloom.schema import User
 from authloom.service import AuthLoom
 
@@ -37,6 +41,11 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="user with this email already exists",
             ) from exc
+        except SessionCreationException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="could not create session",
+            ) from exc
 
     @router.post(
         "/signin", status_code=status.HTTP_200_OK, response_model=AuthHttpResDto
@@ -51,6 +60,11 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="invalid credentials",
+            ) from exc
+        except SessionCreationException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="could not create session",
             ) from exc
 
         response.set_cookie(

@@ -17,7 +17,11 @@ from authloom.dtos import (
     SignupSrvInputDto,
     UserResDto,
 )
-from authloom.exceptions import InvalidCredentialsException, UserAlreadyExistsException
+from authloom.exceptions import (
+    InvalidCredentialsException,
+    SessionCreationException,
+    UserAlreadyExistsException,
+)
 from authloom.schema import Session, User
 from authloom.utils.time import utc_now
 
@@ -96,7 +100,7 @@ class AuthLoom:
                 await session.commit()
             except IntegrityError:
                 await session.rollback()
-                raise ValueError() from None
+                raise SessionCreationException() from None
 
             await session.refresh(user)
             await session.refresh(auth_session)
@@ -141,7 +145,7 @@ class AuthLoom:
                 await session.commit()
             except IntegrityError:
                 await session.rollback()
-                raise ValueError() from None
+                raise SessionCreationException() from None
 
             await session.refresh(auth_session)
 
