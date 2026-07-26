@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import timedelta, datetime, UTC
+from datetime import timedelta
 
 import email_normalize
 from argon2 import PasswordHasher
@@ -33,7 +33,6 @@ class AuthLoom:
     def __generate_session_token(self) -> tuple[str, str]:
         token = secrets.token_urlsafe(32)
         return token, self.__hash_session_token(token)
-
 
     async def signup(
         self, input: SignupSrvInputDto
@@ -91,7 +90,9 @@ class AuthLoom:
                 expires_at=auth_session.expires_at,
             )
 
-    async def signin(self, input: SigninSrvInputDto) -> tuple[UserResDto, SessionResDto]:
+    async def signin(
+        self, input: SigninSrvInputDto
+    ) -> tuple[UserResDto, SessionResDto]:
         normalized_result = await self.email_normalizer.normalize(input.email)
 
         async with self.session_factory() as session:
@@ -138,37 +139,42 @@ class AuthLoom:
 
         async with self.session_factory() as session:
             q = await session.execute(
-                select(Session).where(Session.token_hash == token_hash, Session.revoked_at.is_(None))
+                select(Session).where(
+                    Session.token_hash == token_hash,
+                    Session.revoked_at.is_(None),
+                    Session.expires_at > utc_now(),
+                )
             )
 
             auth_session = q.scalar_one_or_none()
 
-            if auth_session == None: return
+            if auth_session is None:
+                return
 
             auth_session.revoked_at = utc_now()
             await session.commit()
 
-    async def get_current_user(self, token_raw) -> None | UserResDto:
+    async def get_current_user(self, token_raw: str) -> None | UserResDto:
         token_hash = self.__hash_session_token(token_raw)
 
         async with self.session_factory() as session:
             q = await session.execute(
                 select(Session).where(
                     Session.token_hash == token_hash,
-                    Session.revoked_at.is_(None)
+                    Session.revoked_at.is_(None),
+                    Session.expires_at > utc_now(),
                 )
             )
             auth_session = q.scalar_one_or_none()
 
-            if auth_session == None: return None
+            if auth_session is None:
+                return None
 
             q = await session.execute(
-                select(User).where(
-                    User.id == auth_session.user_id
-                )
+                select(User).where(User.id == auth_session.user_id)
             )
             user = q.scalar_one_or_none()
-            if not user: return None
-
+            if user is None:
+                return None
 
             return UserResDto.model_validate(user)
