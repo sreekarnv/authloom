@@ -12,6 +12,8 @@ dependencies = [
     "cuid2>=2.0.1",
     "email-normalize>=3.1.0",
     "fastapi>=0.140.0",
+    "pydantic[email]>=2.13.4",
+    "sqlalchemy>=2.0.51",
 ]
 license = "Apache-2.0"
 classifiers = [

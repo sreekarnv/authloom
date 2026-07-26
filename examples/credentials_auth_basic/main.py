@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from authloom.schema import Base as AuthLoomBase
-from authloom.router import create_auth_router
-from authloom.service import AuthLoom
+
 from database import AsyncSessionLocal, engine
+from fastapi import FastAPI
+
+from authloom import AuthLoom, AuthLoomBase, create_auth_router
 
 
 @asynccontextmanager
