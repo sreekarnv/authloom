@@ -66,4 +66,11 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
 
         response.delete_cookie("authloom.auth")
 
+    @router.get("/me", status_code=status.HTTP_200_OK)
+    async def get_current_user(request: Request):
+        token_raw = request.cookies.get("authloom.auth")
+        if not token_raw: return None
+
+        return await auth.get_current_user(token_raw=token_raw)
+
     return router

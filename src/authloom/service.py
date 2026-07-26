@@ -147,3 +147,28 @@ class AuthLoom:
 
             auth_session.revoked_at = utc_now()
             await session.commit()
+
+    async def get_current_user(self, token_raw) -> None | UserResDto:
+        token_hash = self.__hash_session_token(token_raw)
+
+        async with self.session_factory() as session:
+            q = await session.execute(
+                select(Session).where(
+                    Session.token_hash == token_hash,
+                    Session.revoked_at.is_(None)
+                )
+            )
+            auth_session = q.scalar_one_or_none()
+
+            if auth_session == None: return None
+
+            q = await session.execute(
+                select(User).where(
+                    User.id == auth_session.user_id
+                )
+            )
+            user = q.scalar_one_or_none()
+            if not user: return None
+
+
+            return UserResDto.model_validate(user)
