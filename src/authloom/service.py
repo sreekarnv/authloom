@@ -1,11 +1,13 @@
 import email_normalize
 from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import undefer
 
-from authloom.dtos import SignupSrvInputDto, UserResDto
-from authloom.exceptions import UserAlreadyExistsException
+from authloom.dtos import SigninSrvInputDto, SignupSrvInputDto, UserResDto
+from authloom.exceptions import InvalidCredentialsException, UserAlreadyExistsException
 from authloom.schema import User
 
 
@@ -46,5 +48,27 @@ class AuthLoom:
                 raise UserAlreadyExistsException() from None
 
             await session.refresh(user)
+
+            return UserResDto.model_validate(user)
+
+    async def signin(self, input: SigninSrvInputDto) -> UserResDto:
+        normalized_result = await self.email_normalizer.normalize(input.email)
+
+        async with self.session_factory() as session:
+            q = await session.execute(
+                select(User)
+                .options(undefer(User.password))
+                .where(User.email == normalized_result.normalized_address)
+                .limit(1)
+            )
+            user = q.scalar_one_or_none()
+
+            if user is None:
+                raise InvalidCredentialsException()
+
+            try:
+                self.password_hasher.verify(user.password, input.password)
+            except VerifyMismatchError:
+                raise InvalidCredentialsException() from None
 
             return UserResDto.model_validate(user)

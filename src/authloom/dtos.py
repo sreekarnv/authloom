@@ -1,5 +1,6 @@
-from typing import Self
 from datetime import datetime
+from typing import Self
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
@@ -28,7 +29,7 @@ class SignupHttpReqDto(BaseModel):
         return self
 
 
-class SignupHttpResDto(BaseModel):
+class AuthHttpResDto(BaseModel):
     message: str
     user: UserResDto
 
@@ -37,3 +38,8 @@ class SignupSrvInputDto(BaseModel):
     name: str
     email: EmailStr
     password: str
+
+
+class SigninSrvInputDto(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1)
