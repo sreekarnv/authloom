@@ -18,6 +18,8 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    PasswordPolicyCode,
+    PasswordPolicyException,
     SessionCreationException,
     UserAlreadyExistsException,
 )
@@ -60,6 +62,24 @@ class AuthLoom:
     async def signup(
         self, input: SignupSrvInputDto
     ) -> tuple[UserResDto, SessionResDto]:
+        if len(input.password) < self.config.password_config.min_length:
+            raise PasswordPolicyException(
+                code=PasswordPolicyCode.TOO_SHORT,
+                message=(
+                    f"Password must contains at least "
+                    f"{self.config.password_config.min_length} characters."
+                ),
+            )
+
+        if len(input.password) > self.config.password_config.max_length:
+            raise PasswordPolicyException(
+                code=PasswordPolicyCode.TOO_LONG,
+                message=(
+                    f"Password must contains at most "
+                    f"{self.config.password_config.max_length} characters."
+                ),
+            )
+
         normalized_result = await self.email_normalizer.normalize(input.email)
 
         async with self.session_factory() as session:
@@ -116,6 +136,12 @@ class AuthLoom:
     async def signin(
         self, input: SigninSrvInputDto
     ) -> tuple[UserResDto, SessionResDto]:
+        if (
+            len(input.password) < self.config.password_config.min_length
+            or len(input.password) > self.config.password_config.max_length
+        ):
+            raise InvalidCredentialsException()
+
         normalized_result = await self.email_normalizer.normalize(input.email)
 
         async with self.session_factory() as session:

@@ -4,7 +4,10 @@ from database import AsyncSessionLocal, engine
 from fastapi import FastAPI
 
 from authloom import AuthLoom, AuthLoomBase, create_auth_router
-from authloom.settings import AuthLoomConfig, AuthLoomCookieSessionConfig
+from authloom.settings import (
+    AuthLoomConfig,
+    AuthLoomCookieSessionConfig,
+)
 
 
 @asynccontextmanager
@@ -24,7 +27,7 @@ auth = AuthLoom(
             http_only=True,
             samesite="lax",
             secure=False,
-        ),
+        )
     )
 )
 
