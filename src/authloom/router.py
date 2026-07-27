@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from authloom.dtos import (
     AuthHttpResDto,
+    SigninHttpReqDto,
     SigninSrvInputDto,
     SignupHttpReqDto,
     SignupSrvInputDto,
@@ -11,6 +12,7 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    PasswordPolicyException,
     SessionCreationException,
     UserAlreadyExistsException,
 )
@@ -30,12 +32,24 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
                 input=SignupSrvInputDto(**input.model_dump())
             )
             response.set_cookie(
-                "authloom.auth",
+                key=auth.config.cookie_session.cookie_name,
                 value=session.token_raw,
-                httponly=True,
+                httponly=auth.config.cookie_session.http_only,
                 expires=session.expires_at,
+                domain=auth.config.cookie_session.domain,
+                path=auth.config.cookie_session.path,
+                samesite=auth.config.cookie_session.samesite,
+                secure=auth.config.cookie_session.secure,
             )
             return AuthHttpResDto(message="account created successfully", user=user)
+        except PasswordPolicyException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    "code": exc.code,
+                    "message": exc.message,
+                },
+            ) from exc
         except UserAlreadyExistsException as exc:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -50,12 +64,11 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
     @router.post(
         "/signin", status_code=status.HTTP_200_OK, response_model=AuthHttpResDto
     )
-    async def signin(input: SigninSrvInputDto, response: Response):
+    async def signin(input: SigninHttpReqDto, response: Response):
         try:
             user, session = await auth.signin(
                 input=SigninSrvInputDto(**input.model_dump())
             )
-
         except InvalidCredentialsException as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,22 +81,33 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
             ) from exc
 
         response.set_cookie(
-            "authloom.auth",
+            key=auth.config.cookie_session.cookie_name,
             value=session.token_raw,
-            httponly=True,
+            httponly=auth.config.cookie_session.http_only,
             expires=session.expires_at,
+            domain=auth.config.cookie_session.domain,
+            path=auth.config.cookie_session.path,
+            samesite=auth.config.cookie_session.samesite,
+            secure=auth.config.cookie_session.secure,
         )
         return AuthHttpResDto(message="logged in successfully", user=user)
 
     @router.post("/signout", status_code=status.HTTP_204_NO_CONTENT)
     async def signout(request: Request, response: Response):
-        token_raw = request.cookies.get("authloom.auth")
+        token_raw = request.cookies.get(auth.config.cookie_session.cookie_name)
         if not token_raw:
             return None
 
         await auth.signout(token_raw=token_raw)
 
-        response.delete_cookie("authloom.auth")
+        response.delete_cookie(
+            key=auth.config.cookie_session.cookie_name,
+            httponly=auth.config.cookie_session.http_only,
+            domain=auth.config.cookie_session.domain,
+            path=auth.config.cookie_session.path,
+            samesite=auth.config.cookie_session.samesite,
+            secure=auth.config.cookie_session.secure,
+        )
 
     @router.get("/me", status_code=status.HTTP_200_OK)
     async def get_current_user(

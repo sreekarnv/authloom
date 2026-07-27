@@ -1,7 +1,14 @@
+import unicodedata
 from datetime import datetime
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    field_validator,
+    model_validator,
+)
 
 
 class UserResDto(BaseModel):
@@ -17,8 +24,8 @@ class UserResDto(BaseModel):
 class SignupHttpReqDto(BaseModel):
     name: str
     email: EmailStr
-    password: str = Field(min_length=1)
-    password_confirm: str = Field(min_length=1)
+    password: str
+    password_confirm: str
 
     @model_validator(mode="after")
     def passwords_match(self) -> Self:
@@ -26,6 +33,21 @@ class SignupHttpReqDto(BaseModel):
             raise ValueError("passwords do not match")
 
         return self
+
+    @field_validator("password", "password_confirm")
+    @classmethod
+    def normalize_password(cls, v: str) -> str:
+        return unicodedata.normalize("NFC", v)
+
+
+class SigninHttpReqDto(BaseModel):
+    email: EmailStr
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def normalize_password(cls, v: str) -> str:
+        return unicodedata.normalize("NFC", v)
 
 
 class AuthHttpResDto(BaseModel):
@@ -41,7 +63,7 @@ class SignupSrvInputDto(BaseModel):
 
 class SigninSrvInputDto(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=1)
+    password: str
 
 
 class SessionResDto(BaseModel):

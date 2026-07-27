@@ -12,6 +12,7 @@ dependencies = [
     "cuid2>=2.0.1",
     "email-normalize>=3.1.0",
     "fastapi>=0.140.0",
+    "pydantic-settings>=2.14.2",
     "pydantic[email]>=2.13.4",
     "sqlalchemy>=2.0.51",
 ]
