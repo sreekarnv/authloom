@@ -1,24 +1,13 @@
-from contextlib import asynccontextmanager
-
-from database import AsyncSessionLocal, engine
+from database import AsyncSessionLocal
 from fastapi import FastAPI
 
-from authloom import AuthLoom, AuthLoomBase, create_auth_router
+from authloom import AuthLoom, create_auth_router
 from authloom.settings import (
     AuthLoomConfig,
     AuthLoomCookieSessionConfig,
 )
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with engine.begin() as connection:
-        await connection.run_sync(AuthLoomBase.metadata.create_all)
-
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 auth = AuthLoom(
     config=AuthLoomConfig(
         session_factory=AsyncSessionLocal,
