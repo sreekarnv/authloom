@@ -8,7 +8,6 @@ from argon2.exceptions import VerifyMismatchError
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import undefer
 
 from authloom.dtos import (
@@ -23,14 +22,16 @@ from authloom.exceptions import (
     UserAlreadyExistsException,
 )
 from authloom.schema import Session, User
+from authloom.settings import AuthLoomConfig
 from authloom.utils.time import utc_now
 
 
 class AuthLoom:
-    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
-        self.session_factory = session_factory
+    def __init__(self, config: AuthLoomConfig) -> None:
+        self.config = config
         self.email_normalizer = email_normalize.Normalizer()
         self.password_hasher = PasswordHasher()
+        self.session_factory = config.session_factory
 
     def __hash_session_token(self, token_raw: str) -> str:
         return hashlib.sha256(token_raw.encode("utf-8")).hexdigest()
@@ -40,7 +41,7 @@ class AuthLoom:
         return token, self.__hash_session_token(token)
 
     async def require_current_user(self, request: Request) -> User:
-        token_raw = request.cookies.get("authloom.auth")
+        token_raw = request.cookies.get(self.config.cookie_session.cookie_name)
         if not token_raw:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -91,7 +92,8 @@ class AuthLoom:
             auth_session = Session(
                 token_hash=token_hash,
                 user_id=user.id,
-                expires_at=utc_now() + timedelta(days=7),
+                expires_at=utc_now()
+                + timedelta(seconds=self.config.cookie_session.ttl),
             )
 
             session.add(auth_session)
@@ -137,7 +139,8 @@ class AuthLoom:
             auth_session = Session(
                 token_hash=token_hash,
                 user_id=user.id,
-                expires_at=utc_now() + timedelta(days=7),
+                expires_at=utc_now()
+                + timedelta(seconds=self.config.cookie_session.ttl),
             )
             session.add(auth_session)
 
