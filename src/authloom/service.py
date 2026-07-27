@@ -136,10 +136,7 @@ class AuthLoom:
     async def signin(
         self, input: SigninSrvInputDto
     ) -> tuple[UserResDto, SessionResDto]:
-        if (
-            len(input.password) < self.config.password_config.min_length
-            or len(input.password) > self.config.password_config.max_length
-        ):
+        if len(input.password) > self.config.password_config.max_length:
             raise InvalidCredentialsException()
 
         normalized_result = await self.email_normalizer.normalize(input.email)

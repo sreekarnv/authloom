@@ -7,19 +7,28 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 class AuthLoomCookieSessionConfig(BaseModel):
     cookie_name: str = Field(
-        default="authloom.auth", description="Name of the auth session cookie"
+        default="authloom.auth",
+        description="Name of the auth session cookie",
+        min_length=1,
     )
-    ttl: int = Field(default=604800, description="TTL in seconds")
+    ttl: int = Field(default=604800, description="TTL in seconds", gt=0)
     http_only: bool = True
     secure: bool = False
     samesite: Literal["lax", "strict", "none"] = "lax"
     domain: str | None = None
-    path: str = "/"
+    path: str = Field(default="/", min_length=1)
 
     @model_validator(mode="after")
     def validate_samesite_secure_options(self) -> Self:
         if self.samesite == "none" and not self.secure:
             raise ValueError("samesite `none` required secure to be `true`")
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_path(self) -> Self:
+        if not self.path.startswith("/"):
+            raise ValueError("path value should start with `/`")
 
         return self
 
@@ -46,7 +55,9 @@ class AuthLoomPasswordConfig(BaseModel):
 
 
 class AuthLoomConfig(BaseSettings):
-    cookie_session: AuthLoomCookieSessionConfig
+    cookie_session: AuthLoomCookieSessionConfig = Field(
+        default_factory=AuthLoomCookieSessionConfig
+    )
     session_factory: async_sessionmaker[AsyncSession]
     password_config: AuthLoomPasswordConfig = Field(
         default_factory=AuthLoomPasswordConfig

@@ -27,7 +27,7 @@ auth = AuthLoom(
             http_only=True,
             samesite="lax",
             secure=False,
-        )
+        ),
     )
 )
 
