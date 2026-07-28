@@ -31,7 +31,6 @@ from authloom.settings import AuthLoomConfig
 class AuthLoom:
     def __init__(self, config: AuthLoomConfig) -> None:
         self.config = config
-        self.email_normalizer = email_normalize.Normalizer()
         self.password_hasher = PasswordHasher()
         self.session_factory = config.session_factory
 
@@ -80,7 +79,8 @@ class AuthLoom:
                 ),
             )
 
-        normalized_result = await self.email_normalizer.normalize(input.email)
+        email_normalizer = email_normalize.Normalizer()
+        normalized_result = await email_normalizer.normalize(input.email)
 
         async with self.session_factory() as session:
             q = await session.execute(
@@ -139,7 +139,8 @@ class AuthLoom:
         if len(input.password) > self.config.password_config.max_length:
             raise InvalidCredentialsException()
 
-        normalized_result = await self.email_normalizer.normalize(input.email)
+        email_normalizer = email_normalize.Normalizer()
+        normalized_result = await email_normalizer.normalize(input.email)
 
         async with self.session_factory() as session:
             q = await session.execute(
