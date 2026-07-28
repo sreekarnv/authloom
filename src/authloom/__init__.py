@@ -1,7 +1,18 @@
 from authloom.router import create_auth_router
-from authloom.schema import Base, Session, User
+from authloom.schema import Base as AuthLoomBase
+from authloom.schema import Session, User
 from authloom.service import AuthLoom
+from authloom.utils.time import UTCDateTime
 
-metadata = Base.metadata
+metadata = AuthLoomBase.metadata
 
-__all__ = ["User", "Session", "metadata", "AuthLoom", "create_auth_router",]
+
+__all__ = [
+    "AuthLoomBase",
+    "metadata",
+    "UTCDateTime",
+    "User",
+    "Session",
+    "AuthLoom",
+    "create_auth_router",
+]
