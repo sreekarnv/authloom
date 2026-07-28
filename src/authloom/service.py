@@ -10,6 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import undefer
 
+from authloom.db.schema import Session, User
+from authloom.db.utils.time import utc_now
 from authloom.dtos import (
     SessionResDto,
     SigninSrvInputDto,
@@ -23,9 +25,7 @@ from authloom.exceptions import (
     SessionCreationException,
     UserAlreadyExistsException,
 )
-from authloom.schema import Session, User
 from authloom.settings import AuthLoomConfig
-from authloom.utils.time import utc_now
 
 
 class AuthLoom:

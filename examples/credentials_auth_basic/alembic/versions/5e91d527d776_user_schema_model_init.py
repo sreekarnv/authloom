@@ -1,8 +1,8 @@
-"""user_session_init
+"""user_schema_model_init
 
-Revision ID: f594f9082d04
+Revision ID: 5e91d527d776
 Revises:
-Create Date: 2026-07-28 12:14:35.052257
+Create Date: 2026-07-28 12:46:46.434584
 
 """
 
@@ -14,7 +14,7 @@ from alembic import op
 import authloom
 
 # revision identifiers, used by Alembic.
-revision: str = "f594f9082d04"
+revision: str = "5e91d527d776"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -31,13 +31,13 @@ def upgrade() -> None:
         sa.Column("password", sa.VARCHAR(), nullable=False),
         sa.Column(
             "created_at",
-            authloom.utils.time.UTCDateTime(),
+            authloom.db.utils.time.UTCDateTime(),
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
-            authloom.utils.time.UTCDateTime(),
+            authloom.db.utils.time.UTCDateTime(),
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=True,
         ),
@@ -53,11 +53,11 @@ def upgrade() -> None:
         "authloom_sessions",
         sa.Column("id", sa.VARCHAR(), nullable=False),
         sa.Column("token_hash", sa.VARCHAR(length=64), nullable=False),
-        sa.Column("expires_at", authloom.utils.time.UTCDateTime(), nullable=False),
-        sa.Column("revoked_at", authloom.utils.time.UTCDateTime(), nullable=True),
+        sa.Column("expires_at", authloom.db.utils.time.UTCDateTime(), nullable=False),
+        sa.Column("revoked_at", authloom.db.utils.time.UTCDateTime(), nullable=True),
         sa.Column(
             "created_at",
-            authloom.utils.time.UTCDateTime(),
+            authloom.db.utils.time.UTCDateTime(),
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
         ),

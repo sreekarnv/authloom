@@ -1,7 +1,7 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from authloom import User
+from authloom.db import User
 
 
 class Base(DeclarativeBase):

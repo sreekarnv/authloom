@@ -2,7 +2,7 @@ from cuid2 import cuid_wrapper
 from sqlalchemy import VARCHAR, ForeignKey, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from authloom.utils.time import UTCDateTime, utc_now
+from authloom.db.utils.time import UTCDateTime, utc_now
 
 CUID_GENERATOR = cuid_wrapper()
 
