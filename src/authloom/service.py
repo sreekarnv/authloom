@@ -58,6 +58,13 @@ class AuthLoom:
 
         return user
 
+    async def optional_current_user(self, request: Request) -> User | None:
+        token_raw = request.cookies.get(self.config.cookie_session.cookie_name)
+        if not token_raw:
+            return None
+
+        return await self.get_current_user(token_raw=token_raw)
+
     async def signup(
         self, input: SignupSrvInputDto
     ) -> tuple[UserResDto, SessionResDto]:
