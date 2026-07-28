@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
-from schema import Base
+from app.schema import Base
 from sqlalchemy import engine_from_config, pool
 
 from authloom.db import metadata as authloom_metadata
