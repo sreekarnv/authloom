@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
+from authloom.db.schema import User
 from authloom.dtos import (
     AuthHttpResDto,
     SigninHttpReqDto,
@@ -16,7 +17,6 @@ from authloom.exceptions import (
     SessionCreationException,
     UserAlreadyExistsException,
 )
-from authloom.schema import User
 from authloom.service import AuthLoom
 
 
