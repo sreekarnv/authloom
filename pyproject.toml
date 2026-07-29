@@ -32,6 +32,9 @@ dev = [
 sqlalchemy = [
     "sqlalchemy>=2.0.51",
 ]
+test = [
+    "pytest>=9.1.1",
+]
 
 [tool.ruff]
 target-version = "py312"
@@ -48,6 +51,3 @@ select = [
     "ASYNC",
     "S",
 ]
-
-[tool.ruff.lint.per-file-ignores]
-"examples/**/test_*.py" = ["S101", "S105"]
