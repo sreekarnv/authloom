@@ -17,9 +17,7 @@ dependencies = [
     "sqlalchemy>=2.0.51",
 ]
 license = "Apache-2.0"
-classifiers = [
-    "License :: OSI Approved :: Apache Software License",
-]
+license-files = ["LICENSE"]
 
 [build-system]
 requires = ["uv_build>=0.11.28,<0.12.0"]
