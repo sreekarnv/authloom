@@ -12,12 +12,14 @@ def test_cookie_session_allows_samesite_none_when_secure_true():
 
     assert session_config.samesite == "none" and session_config.secure is True
 
+
 def test_cookie_session_rejects_samesite_none_when_secure_false():
     with pytest.raises(ValidationError):
         AuthLoomCookieSessionConfig(
             secure=False,
             samesite="none",
         )
+
 
 def test_cookie_session_allows_path_starting_with_slash():
     session_config = AuthLoomCookieSessionConfig(path="/hello-world")

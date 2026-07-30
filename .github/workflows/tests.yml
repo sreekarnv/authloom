@@ -31,6 +31,9 @@ jobs:
       - name: Run Ruff
         run: uv run ruff check .
 
+      - name: Check formatting
+        run: uv run ruff format --check .
+
   test:
     name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
