@@ -28,18 +28,20 @@ from authloom.exceptions import (
 from authloom.settings import AuthLoomConfig
 
 
+def hash_session_token(token_raw: str) -> str:
+    return hashlib.sha256(token_raw.encode("utf-8")).hexdigest()
+
+
+def generate_session_token() -> tuple[str, str]:
+    token = secrets.token_urlsafe(32)
+    return token, hash_session_token(token)
+
+
 class AuthLoom:
     def __init__(self, config: AuthLoomConfig) -> None:
         self.config = config
         self.password_hasher = PasswordHasher()
         self.session_factory = config.session_factory
-
-    def __hash_session_token(self, token_raw: str) -> str:
-        return hashlib.sha256(token_raw.encode("utf-8")).hexdigest()
-
-    def __generate_session_token(self) -> tuple[str, str]:
-        token = secrets.token_urlsafe(32)
-        return token, self.__hash_session_token(token)
 
     async def require_current_user(self, request: Request) -> User:
         token_raw = request.cookies.get(self.config.cookie_session.cookie_name)
@@ -115,7 +117,7 @@ class AuthLoom:
                 await session.rollback()
                 raise UserAlreadyExistsException() from None
 
-            token_raw, token_hash = self.__generate_session_token()
+            token_raw, token_hash = generate_session_token()
             auth_session = Session(
                 token_hash=token_hash,
                 user_id=user.id,
@@ -166,7 +168,7 @@ class AuthLoom:
             except VerifyMismatchError:
                 raise InvalidCredentialsException() from None
 
-            token_raw, token_hash = self.__generate_session_token()
+            token_raw, token_hash = generate_session_token()
             auth_session = Session(
                 token_hash=token_hash,
                 user_id=user.id,
@@ -190,7 +192,7 @@ class AuthLoom:
             )
 
     async def signout(self, token_raw: str) -> None:
-        token_hash = self.__hash_session_token(token_raw)
+        token_hash = hash_session_token(token_raw)
 
         async with self.session_factory() as session:
             q = await session.execute(
@@ -210,7 +212,7 @@ class AuthLoom:
             await session.commit()
 
     async def get_current_user(self, token_raw: str) -> User | None:
-        token_hash = self.__hash_session_token(token_raw)
+        token_hash = hash_session_token(token_raw)
 
         async with self.session_factory() as session:
             q = await session.execute(
