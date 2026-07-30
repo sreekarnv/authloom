@@ -1,12 +1,20 @@
 [project]
 name = "authloom"
 version = "0.1.0.dev0"
-description = "Authentication building blocks for Python applications"
+description = "Authentication building blocks for FastAPI applications"
 readme = "README.md"
 authors = [
     { name = "Sreekar Nutulapati", email = "sreekarnv1@gmail.com" }
 ]
 requires-python = ">=3.12"
+keywords = ["fastapi", "authentication"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
 dependencies = [
     "argon2-cffi>=25.1.0",
     "cuid2>=2.0.1",
@@ -18,6 +26,12 @@ dependencies = [
 ]
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://github.com/sreekarnv/authloom"
+Repository = "https://github.com/sreekarnv/authloom"
+Issues = "https://github.com/sreekarnv/authloom/issues"
+Changelog = "https://github.com/sreekarnv/authloom/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["uv_build>=0.11.28,<0.12.0"]
