@@ -111,6 +111,8 @@ Password settings:
 
 Use `secure=True` for HTTPS production deployments.
 
+See `docs/configuration.md` for the full configuration reference.
+
 ## Database And Migrations
 
 AuthLoom does not own migrations. Applications own Alembic setup and migration history.
