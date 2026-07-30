@@ -125,6 +125,8 @@ target_metadata = [authloom_metadata, your_app_metadata]
 
 Do not rely on `metadata.create_all()` for production schema management.
 
+See `docs/database-and-migrations.md` for more detail.
+
 ## Security Model
 
 AuthLoom currently provides:
