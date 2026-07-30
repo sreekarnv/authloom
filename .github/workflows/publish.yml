@@ -5,18 +5,20 @@ on:
     types:
       - published
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
 
 jobs:
-  publish:
-    name: Publish to PyPI
+  build:
+    name: Build distribution
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -29,7 +31,30 @@ jobs:
           enable-cache: true
 
       - name: Build package
-        run: uv build
+        run: uv build --no-sources
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v5
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/authloom
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v6
+        with:
+          name: python-package-distributions
+          path: dist/
 
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
