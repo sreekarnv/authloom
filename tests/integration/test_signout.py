@@ -20,7 +20,7 @@ async def test_signout_accepted_and_cookie_is_deleted(app: FastAPI):
 
     assert signup_resp.status_code == status.HTTP_201_CREATED
     assert signout_resp.status_code == status.HTTP_204_NO_CONTENT
-    assert "authloom.auth=\"\"" in signout_resp.headers["set-cookie"]
+    assert 'authloom.auth=""' in signout_resp.headers["set-cookie"]
     assert "Path=/" in signout_resp.headers["set-cookie"]
     assert current_user_resp.status_code == status.HTTP_401_UNAUTHORIZED
 

@@ -40,9 +40,7 @@ async def app(async_engine: AsyncEngine) -> FastAPI:
 
     _app = FastAPI()
 
-    auth = AuthLoom(
-        config=AuthLoomConfig(session_factory=session_maker)
-    )
+    auth = AuthLoom(config=AuthLoomConfig(session_factory=session_maker))
 
     auth_router = create_auth_router(auth=auth)
     _app.include_router(auth_router)
