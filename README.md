@@ -142,6 +142,8 @@ AuthLoom currently provides:
 
 Production deployments should use HTTPS and `secure=True` cookies. AuthLoom does not add a separate CSRF protection system beyond the configured cookie policy.
 
+See `docs/security.md` for more detail.
+
 ## v0.1 Limitations
 
 AuthLoom does not currently provide:
