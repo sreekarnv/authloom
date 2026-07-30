@@ -1,10 +1,14 @@
 import pytest_asyncio
-
 from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from authloom import AuthLoom, AuthLoomConfig, create_auth_router
-from authloom.db.schema import Session, User, Base
+from authloom.db.schema import Base
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
@@ -12,9 +16,7 @@ async def async_engine():
     engine = create_async_engine(
         url="sqlite+aiosqlite:///./test.db",
         echo=False,
-        connect_args={
-            "check_same_thread": False
-        }
+        connect_args={"check_same_thread": False},
     )
 
     async with engine.begin() as conn:
@@ -33,15 +35,13 @@ async def app(async_engine: AsyncEngine) -> FastAPI:
     session_maker = async_sessionmaker(
         async_engine,
         class_=AsyncSession,
-        expire_on_commit=False
+        expire_on_commit=False,
     )
 
     _app = FastAPI()
 
     auth = AuthLoom(
-        config=AuthLoomConfig(
-            session_factory=session_maker
-        )
+        config=AuthLoomConfig(session_factory=session_maker)
     )
 
     auth_router = create_auth_router(auth=auth)
