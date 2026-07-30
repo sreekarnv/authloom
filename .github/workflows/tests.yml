@@ -1,0 +1,75 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    name: Ruff lint
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --group dev
+
+      - name: Run Ruff
+        run: uv run ruff check .
+
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Unit tests
+            path: tests/unit
+          - name: Integration tests
+            path: tests/integration
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --group dev
+
+      - name: Run tests
+        env:
+          TEST_PATH: ${{ matrix.path }}
+        run: |
+          shopt -s globstar nullglob
+          tests=("$TEST_PATH"/**/test_*.py "$TEST_PATH"/**/*_test.py)
+
+          if [ ${#tests[@]} -eq 0 ]; then
+            echo "No tests found in $TEST_PATH; skipping."
+            exit 0
+          fi
+
+          uv run --with pytest pytest "$TEST_PATH"
