@@ -2,13 +2,19 @@
 
 All notable changes to AuthLoom will be documented in this file.
 
-## [0.1.0a1] - Unreleased
+## 0.1.0a1 — 2026-07-30
 
 Initial alpha release of AuthLoom.
 
-This release includes:
+### Included
 
-- FastAPI email/password authentication.
-- Cookie-backed sessions.
-- SQLAlchemy integration for consumer-owned database models and migrations.
-- SQLite-focused tests and example coverage.
+- Email/password signup and signin for FastAPI applications
+- Cookie-backed database sessions with expiry and signout revocation
+- Required and optional current-user dependencies
+- Argon2 password hashing, email normalization, and hashed session-token storage
+- Async SQLAlchemy integration with Alembic migration guidance
+- Basic credentials-authentication example and test coverage
+
+### Release status
+
+AuthLoom is pre-release software. APIs, configuration, and database integration details may change before the first stable release.

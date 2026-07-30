@@ -37,6 +37,9 @@ Changelog = "https://github.com/sreekarnv/authloom/blob/main/CHANGELOG.md"
 requires = ["uv_build>=0.11.28,<0.12.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+source-include = ["CHANGELOG.md"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.16.0",
