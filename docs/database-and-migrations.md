@@ -62,6 +62,6 @@ Use Alembic or the application's normal migration workflow for production schema
 
 ## SQLite And PostgreSQL
 
-The repository includes a SQLite example at `examples/credentials_auth_basic/`. It demonstrates local development setup, app-owned Alembic migrations, and combining AuthLoom metadata with application metadata.
+The repository includes a SQLite example at [`examples/credentials_auth_basic/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_basic). It demonstrates local development setup, app-owned Alembic migrations, and combining AuthLoom metadata with application metadata.
 
-For production deployments, use a production database and migration workflow appropriate for the application. PostgreSQL is a common choice for FastAPI and SQLAlchemy applications, but AuthLoom's current repository tests and example app are SQLite-focused.
+The repository also includes a PostgreSQL example at [`examples/credentials_auth_postgres/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres). It demonstrates using `postgresql+asyncpg://...`, async Alembic migrations, and a Docker Compose PostgreSQL database for local development.

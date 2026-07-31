@@ -44,6 +44,10 @@ source-include = ["CHANGELOG.md"]
 dev = [
     "ruff>=0.16.0",
 ]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material==9.6.20",
+]
 sqlalchemy = [
     "sqlalchemy>=2.0.51",
 ]

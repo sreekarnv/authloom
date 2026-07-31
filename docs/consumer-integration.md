@@ -2,7 +2,7 @@
 
 This guide shows how to add AuthLoom to an existing FastAPI application after installing the published package from PyPI.
 
-It does not create another example application. For complete reference implementations, see the SQLite example in [`examples/credentials_auth_basic/`](../examples/credentials_auth_basic/) and the PostgreSQL example in [`examples/credentials_auth_postgres/`](../examples/credentials_auth_postgres/).
+It does not create another example application. For complete reference implementations, see the SQLite example in [`examples/credentials_auth_basic/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_basic) and the PostgreSQL example in [`examples/credentials_auth_postgres/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres).
 
 ## Install AuthLoom
 
@@ -100,7 +100,6 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
@@ -174,7 +173,6 @@ from fastapi import Depends
 
 from authloom.db import User
 
-
 @app.get("/me")
 async def get_me(user: Annotated[User, Depends(auth.require_current_user)]):
     return {"id": user.id, "email": user.email, "name": user.name}
@@ -191,7 +189,6 @@ from fastapi import Depends
 
 from authloom.db import User
 
-
 @app.get("/homepage")
 async def homepage(
     user: Annotated[User | None, Depends(auth.optional_current_user)],
@@ -207,7 +204,6 @@ If your application has its own declarative base:
 
 ```python
 from sqlalchemy.orm import DeclarativeBase
-
 
 class Base(DeclarativeBase):
     pass
@@ -231,9 +227,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from authloom.db import User
-
 from myapp.schema import Base
-
 
 class Post(Base):
     __tablename__ = "posts"
@@ -321,7 +315,7 @@ It does not currently provide:
 
 ## Reference Implementations
 
-- SQLite: [`examples/credentials_auth_basic/`](../examples/credentials_auth_basic/)
-- PostgreSQL: [`examples/credentials_auth_postgres/`](../examples/credentials_auth_postgres/)
-- Migration details: [`docs/database-and-migrations.md`](database-and-migrations.md)
-- Cookie and security details: [`docs/security.md`](security.md)
+- SQLite: [`examples/credentials_auth_basic/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_basic)
+- PostgreSQL: [`examples/credentials_auth_postgres/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres)
+- Migration details: [Database And Migrations](database-and-migrations.md)
+- Cookie and security details: [Security](security.md)

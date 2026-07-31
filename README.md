@@ -125,9 +125,9 @@ Password settings:
 
 Use `secure=True` for HTTPS production deployments.
 
-See `docs/configuration.md` for the full configuration reference.
+See [`docs/configuration.md`](docs/configuration.md) for the full configuration reference.
 
-For an end-to-end adoption guide, see `docs/consumer-integration.md`.
+For an end-to-end adoption guide, see [`docs/consumer-integration.md`](docs/consumer-integration.md).
 
 ## Database And Migrations
 
@@ -143,7 +143,7 @@ target_metadata = [authloom_metadata, your_app_metadata]
 
 Do not rely on `metadata.create_all()` for production schema management.
 
-See `docs/database-and-migrations.md` for more detail.
+See [`docs/database-and-migrations.md`](docs/database-and-migrations.md) for more detail.
 
 ## Security Model
 
@@ -160,7 +160,7 @@ AuthLoom currently provides:
 
 Production deployments should use HTTPS and `secure=True` cookies. AuthLoom does not add a separate CSRF protection system beyond the configured cookie policy.
 
-See `docs/security.md` for more detail.
+See [`docs/security.md`](docs/security.md) for more detail.
 
 ## v0.1 Limitations
 
@@ -178,10 +178,10 @@ AuthLoom does not currently provide:
 
 ## Documentation
 
-- Consumer integration guide: `docs/consumer-integration.md`
-- Configuration reference: `docs/configuration.md`
-- Database and migrations: `docs/database-and-migrations.md`
-- Security model: `docs/security.md`
+- Consumer integration guide: [`docs/consumer-integration.md`](docs/consumer-integration.md)
+- Configuration reference: [`docs/configuration.md`](docs/configuration.md)
+- Database and migrations: [`docs/database-and-migrations.md`](docs/database-and-migrations.md)
+- Security model: [`docs/security.md`](docs/security.md)
 
 ## Example Applications
 
