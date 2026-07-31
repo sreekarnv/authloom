@@ -127,6 +127,8 @@ Use `secure=True` for HTTPS production deployments.
 
 See `docs/configuration.md` for the full configuration reference.
 
+For an end-to-end adoption guide, see `docs/consumer-integration.md`.
+
 ## Database And Migrations
 
 AuthLoom does not own migrations. Applications own Alembic setup and migration history.
@@ -174,9 +176,18 @@ AuthLoom does not currently provide:
 - Session cleanup jobs for expired or revoked sessions.
 - Packaged database migrations or a migration CLI.
 
-## Example Application
+## Documentation
+
+- Consumer integration guide: `docs/consumer-integration.md`
+- Configuration reference: `docs/configuration.md`
+- Database and migrations: `docs/database-and-migrations.md`
+- Security model: `docs/security.md`
+
+## Example Applications
 
 See `examples/credentials_auth_basic/` for a SQLite FastAPI example.
+
+See `examples/credentials_auth_postgres/` for a PostgreSQL FastAPI example.
 
 ## Development
 
