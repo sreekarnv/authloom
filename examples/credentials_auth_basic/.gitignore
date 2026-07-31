@@ -1,1 +1,5 @@
 *.db
+venv/
+__pycache__/
+*.pyc
+cookies.txt

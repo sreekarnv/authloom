@@ -39,10 +39,10 @@ From this directory:
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-pip install ../../
+pip install -e ../../
 ```
 
-When copied into a separate application, replace `pip install ../../` with a
+When copied into a separate application, replace `pip install -e ../../` with a
 normal AuthLoom package dependency.
 
 ## Run Database Migrations
