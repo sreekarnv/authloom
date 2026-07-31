@@ -1,6 +1,6 @@
-# Credentials Auth Basic Example
+# Credentials Auth PostgreSQL Example
 
-This example shows how a FastAPI application can consume AuthLoom for basic email/password authentication with session cookies.
+This example shows how a FastAPI application can consume AuthLoom for basic email/password authentication with session cookies and PostgreSQL.
 
 It demonstrates:
 
@@ -9,9 +9,8 @@ It demonstrates:
 - An application-owned `/optional-auth` route that works with or without a session.
 - AuthLoom configuration through public APIs.
 - AuthLoom database metadata combined with application-owned SQLAlchemy models.
-- Consumer-owned Alembic migrations.
-
-This example is intentionally SQLite-focused for local development.
+- Consumer-owned Alembic migrations against PostgreSQL.
+- Local PostgreSQL setup through Docker Compose.
 
 ## Responsibilities
 
@@ -38,16 +37,35 @@ From this directory:
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
-pip install -e ../../
+pip install -e ../../ "fastapi[standard]" alembic asyncpg
 ```
 
-When copied into a separate application, replace `pip install -e ../../` with a
+When copied into a separate application, replace `pip install ../../` with a
 normal AuthLoom package dependency.
+
+## Start PostgreSQL
+
+From this directory:
+
+```bash
+docker compose up -d postgres
+```
+
+The default database URL is:
+
+```text
+postgresql+asyncpg://authloom:authloom@localhost:5432/authloom
+```
+
+Override it with `DATABASE_URL` if needed. The app and Alembic both use the
+async `postgresql+asyncpg://` URL by default.
+
+If you prefer synchronous Alembic migrations, install `psycopg[binary]` and
+adapt `alembic/env.py` and `alembic.ini` to use `postgresql+psycopg://`.
 
 ## Run Database Migrations
 
-From this directory:
+After PostgreSQL is running, from this directory:
 
 ```bash
 alembic upgrade head
