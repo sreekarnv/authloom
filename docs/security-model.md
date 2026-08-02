@@ -55,6 +55,6 @@ AuthLoom does not currently provide:
 - JWT access or refresh tokens.
 - Roles or permissions.
 - Organizations or multi-tenancy.
-- Session cleanup jobs for expired or revoked sessions.
+- Automated session cleanup jobs or schedulers.
 
 These features are outside the current `v0.1` scope.

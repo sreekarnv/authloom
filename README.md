@@ -155,6 +155,7 @@ AuthLoom currently provides:
 - SHA-256 hashes of session tokens stored in the database.
 - Session expiry based on the configured cookie/session lifetime.
 - Session revocation during signout.
+- Manual cleanup of expired or revoked sessions.
 - `HttpOnly` cookie support.
 - Generic invalid-credential responses for signin failures.
 
@@ -173,7 +174,7 @@ AuthLoom does not currently provide:
 - OAuth or social login.
 - JWT access or refresh tokens.
 - Roles, permissions, organizations, or multi-tenancy.
-- Session cleanup jobs for expired or revoked sessions.
+- Automated session cleanup jobs or schedulers.
 - Packaged database migrations or a migration CLI.
 
 ## Documentation

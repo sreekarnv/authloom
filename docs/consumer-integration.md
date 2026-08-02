@@ -196,6 +196,28 @@ async def homepage(
     return {"authenticated": user is not None}
 ```
 
+## Clean Up Stale Sessions
+
+AuthLoom can delete expired or revoked sessions from the database:
+
+```python
+deleted_count = await auth.delete_stale_sessions()
+```
+
+For deterministic cleanup, pass a timezone-aware cutoff:
+
+```python
+from datetime import UTC, datetime
+
+deleted_count = await auth.delete_stale_sessions(
+    before=datetime(2026, 1, 1, tzinfo=UTC)
+)
+```
+
+Run this from your application's own scheduled mechanism, such as cron or a worker. AuthLoom does not provide an endpoint, scheduler, CLI command, or background task for cleanup.
+
+Revoked sessions are deleted immediately by this cleanup method. If your application needs security auditing, record the relevant signout or revocation events elsewhere before deleting session rows.
+
 ## Combine Metadata
 
 AuthLoom owns the `authloom_users` and `authloom_sessions` SQLAlchemy models. Your application still owns Alembic and migration files.
@@ -309,7 +331,6 @@ It does not currently provide:
 - OAuth or social login.
 - JWT access or refresh tokens.
 - Roles, permissions, organizations, or multi-tenancy.
-- Session cleanup jobs for expired or revoked sessions.
 - Packaged database migrations or a migration CLI.
 - A production CSRF protection system beyond the configured cookie policy.
 

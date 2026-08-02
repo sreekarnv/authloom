@@ -1,12 +1,12 @@
 import hashlib
 import secrets
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import email_normalize
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import undefer
 
@@ -242,3 +242,24 @@ class AuthLoom:
                 return None
 
             return user
+
+    async def delete_stale_sessions(self, *, before: datetime | None = None) -> int:
+        cutoff = utc_now() if before is None else before
+
+        if cutoff.tzinfo is None or cutoff.tzinfo.utcoffset(cutoff) is None:
+            raise ValueError("before must be timezone-aware")
+
+        cutoff = cutoff.astimezone(UTC)
+
+        async with self.session_factory() as session:
+            q = await session.execute(
+                delete(Session).where(
+                    or_(
+                        Session.expires_at <= cutoff,
+                        Session.revoked_at.is_not(None),
+                    )
+                )
+            )
+            await session.commit()
+
+        return q.rowcount or 0
