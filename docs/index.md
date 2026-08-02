@@ -29,7 +29,7 @@ If you installed AuthLoom from PyPI and want to wire it into an application, sta
 - [Consumer Integration Guide](consumer-integration.md)
 - [Configuration](configuration.md)
 - [Database And Migrations](database-and-migrations.md)
-- [Security](security.md)
+- [Security](security-model.md)
 
 ## Reference Implementations
 
