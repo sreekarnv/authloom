@@ -170,6 +170,13 @@ AuthLoom currently provides:
 - Manual cleanup of expired or revoked sessions.
 - `HttpOnly` cookie support.
 - Generic invalid-credential responses for signin failures.
+- Argon2 verification for both unknown-email and wrong-password signin failures.
+
+For signin, unknown email and wrong password attempts return the same
+invalid-credentials response. AuthLoom performs Argon2 verification in both
+cases, using a dummy hash for unknown users, to reduce account-enumeration
+timing differences. This does not replace rate limiting or brute-force
+protection.
 
 Production deployments should use HTTPS and `secure=True` cookies. AuthLoom does not add a separate CSRF protection system beyond the configured cookie policy.
 

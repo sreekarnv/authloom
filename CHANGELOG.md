@@ -2,6 +2,18 @@
 
 All notable changes to AuthLoom will be documented in this file.
 
+## 0.1.0a2
+
+### Added
+
+- Added explicit cleanup for expired and revoked database sessions.
+- Added regression tests for session expiry boundaries and revoked-token replay.
+
+### Security
+
+- Reduced sign-in account-enumeration risk by performing Argon2 verification
+  for both unknown-email and wrong-password failures.
+
 ## 0.1.0a1 — 2026-07-30
 
 Initial alpha release of AuthLoom.
