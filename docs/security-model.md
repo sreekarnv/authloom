@@ -7,6 +7,8 @@ This document describes AuthLoom's current security model and the boundaries of 
 AuthLoom currently provides:
 
 - Argon2 password hashing through `argon2-cffi`.
+- Dummy Argon2 verification for unknown signin emails, so missing accounts
+  still perform password verification work before returning invalid credentials.
 - Email normalization before signup and signin.
 - Random session tokens generated with Python's `secrets` module.
 - Raw session tokens sent to clients through cookies.

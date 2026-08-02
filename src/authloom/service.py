@@ -4,7 +4,7 @@ from datetime import timedelta
 
 import email_normalize
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -41,6 +41,7 @@ class AuthLoom:
     def __init__(self, config: AuthLoomConfig) -> None:
         self.config = config
         self.password_hasher = PasswordHasher()
+        self.dummy_password_hash = self.password_hasher.hash(secrets.token_urlsafe(32))
         self.session_factory = config.session_factory
 
     async def require_current_user(self, request: Request) -> User:
@@ -161,11 +162,17 @@ class AuthLoom:
             user = q.scalar_one_or_none()
 
             if user is None:
+                try:
+                    self.password_hasher.verify(
+                        self.dummy_password_hash, input.password
+                    )
+                except VerificationError:
+                    pass
                 raise InvalidCredentialsException()
 
             try:
                 self.password_hasher.verify(user.password, input.password)
-            except VerifyMismatchError:
+            except (InvalidHashError, VerificationError):
                 raise InvalidCredentialsException() from None
 
             token_raw, token_hash = generate_session_token()
