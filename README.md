@@ -11,13 +11,13 @@ AuthLoom is pre-release software. APIs and database integration details may chan
 Using `uv`:
 
 ```bash
-uv add "authloom==0.1.0a1"
+uv add authloom
 ```
 
 Using `pip`:
 
 ```bash
-pip install "authloom==0.1.0a1"
+pip install authloom
 ```
 
 ## Requirements
@@ -145,6 +145,18 @@ Do not rely on `metadata.create_all()` for production schema management.
 
 See [`docs/database-and-migrations.md`](docs/database-and-migrations.md) for more detail.
 
+## Session Cleanup
+
+AuthLoom provides explicit cleanup for stale database sessions:
+
+```python
+deleted_count = await auth.delete_stale_sessions()
+```
+
+Expired and revoked sessions are deleted. AuthLoom provides the cleanup
+operation, but the consuming application decides when to run it. AuthLoom does
+not include cron, a worker, a CLI, or a scheduler.
+
 ## Security Model
 
 AuthLoom currently provides:
@@ -174,7 +186,7 @@ AuthLoom does not currently provide:
 - OAuth or social login.
 - JWT access or refresh tokens.
 - Roles, permissions, organizations, or multi-tenancy.
-- Automated session cleanup jobs or schedulers.
+- AuthLoom provides stale-session cleanup but does not schedule it automatically.
 - Packaged database migrations or a migration CLI.
 
 ## Documentation

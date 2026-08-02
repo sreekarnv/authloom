@@ -11,13 +11,13 @@ AuthLoom is pre-release software. APIs and database integration details may chan
 Using `uv`:
 
 ```bash
-uv add "authloom==0.1.0a1"
+uv add authloom
 ```
 
 Using `pip`:
 
 ```bash
-pip install "authloom==0.1.0a1"
+pip install authloom
 ```
 
 ## Start Here
