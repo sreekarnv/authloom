@@ -318,4 +318,4 @@ It does not currently provide:
 - SQLite: [`examples/credentials_auth_basic/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_basic)
 - PostgreSQL: [`examples/credentials_auth_postgres/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres)
 - Migration details: [Database And Migrations](database-and-migrations.md)
-- Cookie and security details: [Security](security.md)
+- Cookie and security details: [Security](security-model.md)
