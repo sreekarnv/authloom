@@ -18,6 +18,14 @@ AuthLoom currently provides:
 - `HttpOnly` cookie support.
 - Generic invalid-credential responses for signin failures.
 
+## Sign-In Failures
+
+Unknown email and wrong password attempts return the same invalid-credentials
+response. AuthLoom performs Argon2 verification in both cases, using a dummy
+hash for unknown users, to reduce account-enumeration timing differences.
+
+This mitigation does not replace rate limiting or brute-force protection.
+
 ## Cookie Security
 
 AuthLoom's default cookie settings are suitable for local development, not for production.
@@ -55,6 +63,6 @@ AuthLoom does not currently provide:
 - JWT access or refresh tokens.
 - Roles or permissions.
 - Organizations or multi-tenancy.
-- Automated session cleanup jobs or schedulers.
+- AuthLoom provides stale-session cleanup but does not schedule it automatically.
 
 These features are outside the current `v0.1` scope.

@@ -9,13 +9,13 @@ It does not create another example application. For complete reference implement
 Using `uv`:
 
 ```bash
-uv add "authloom==0.1.0a1"
+uv add authloom
 ```
 
 Using `pip`:
 
 ```bash
-pip install "authloom==0.1.0a1"
+pip install authloom
 ```
 
 Install the async database driver your application uses:
@@ -198,7 +198,7 @@ async def homepage(
 
 ## Clean Up Stale Sessions
 
-AuthLoom can delete expired or revoked sessions from the database:
+AuthLoom provides explicit cleanup for stale database sessions:
 
 ```python
 deleted_count = await auth.delete_stale_sessions()
@@ -214,7 +214,7 @@ deleted_count = await auth.delete_stale_sessions(
 )
 ```
 
-Run this from your application's own scheduled mechanism, such as cron or a worker. AuthLoom does not provide an endpoint, scheduler, CLI command, or background task for cleanup.
+Expired and revoked sessions are deleted. AuthLoom provides the cleanup operation, but the consuming application decides when to run it. AuthLoom does not include cron, a worker, a CLI, or a scheduler.
 
 Revoked sessions are deleted immediately by this cleanup method. If your application needs security auditing, record the relevant signout or revocation events elsewhere before deleting session rows.
 
@@ -260,7 +260,7 @@ class Post(Base):
 
 ## Create Consumer-Owned Alembic Migrations
 
-AuthLoom `0.1.0a1` does not ship migrations and does not run schema creation for you.
+AuthLoom does not ship migrations and does not run schema creation for you.
 
 Create migrations with your application's Alembic workflow:
 
@@ -318,9 +318,9 @@ Set `domain` only when you need the cookie shared across a specific domain or su
 - Mounting the router more than once or creating multiple `AuthLoom` instances with inconsistent cookie settings.
 - Expecting AuthLoom to provide authorization rules; route-level authorization remains application-owned.
 
-## Current Limitations Of 0.1.0a1
+## Current Limitations
 
-AuthLoom `0.1.0a1` provides credentials signup/signin, cookie-backed database sessions, required and optional current-user dependencies, password hashing, email normalization, session expiry, and signout revocation.
+AuthLoom provides credentials signup/signin, cookie-backed database sessions, required and optional current-user dependencies, password hashing, email normalization, session expiry, and signout revocation.
 
 It does not currently provide:
 
