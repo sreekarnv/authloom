@@ -1,6 +1,6 @@
 # Credentials Auth Basic Example
 
-This example shows how a FastAPI application can consume AuthLoom for basic email/password authentication with session cookies.
+This example shows how a FastAPI application can consume AuthLoom for basic email/password authentication with session cookies and consumer-owned CSRF protection.
 
 It demonstrates:
 
@@ -12,7 +12,8 @@ It demonstrates:
 - Consumer-owned Alembic migrations.
 - Consumer-owned CSRF protection for browser cookie flows.
 
-This example is intentionally SQLite-focused for local development.
+This example is intentionally SQLite-focused for local development. The CSRF
+package is an example-only dependency and is not part of core AuthLoom.
 
 ## Responsibilities
 

@@ -1,6 +1,6 @@
 # Credentials Auth PostgreSQL Example
 
-This example shows how a FastAPI application can consume AuthLoom for basic email/password authentication with session cookies and PostgreSQL.
+This example shows how a FastAPI application can consume AuthLoom for basic email/password authentication with session cookies, PostgreSQL, and consumer-owned CSRF protection.
 
 It demonstrates:
 
@@ -12,6 +12,8 @@ It demonstrates:
 - Consumer-owned Alembic migrations against PostgreSQL.
 - Local PostgreSQL setup through Docker Compose.
 - Consumer-owned CSRF protection for browser cookie flows.
+
+The CSRF package is an example-only dependency and is not part of core AuthLoom.
 
 ## Responsibilities
 

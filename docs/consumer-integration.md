@@ -179,6 +179,10 @@ The dependency runs before signup, signin, and signout. It does not apply to
 You may use [`fastapi-csrf-protect`](https://pypi.org/project/fastapi-csrf-protect/),
 another library, or your own implementation. Configure CORS separately.
 
+The example applications include `fastapi-csrf-protect` only to demonstrate one
+possible integration. It is not installed with core AuthLoom and is not required
+for consumers using another CSRF solution.
+
 The router is mounted at `/auth` and provides:
 
 | Method | Path | Description |

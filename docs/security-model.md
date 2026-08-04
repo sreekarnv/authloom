@@ -37,6 +37,9 @@ through `create_auth_router(..., unsafe_route_dependencies=...)`. Application-ow
 mutation routes must attach the same consumer-owned protection separately. CORS
 and trusted-origin configuration are separate from CSRF protection.
 
+The `fastapi-csrf-protect` integration in the example applications is optional
+example code and is not a dependency of the AuthLoom package.
+
 ## Sign-In Failures
 
 Unknown email and wrong password attempts return the same invalid-credentials

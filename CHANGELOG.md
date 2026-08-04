@@ -2,6 +2,25 @@
 
 All notable changes to AuthLoom will be documented in this file.
 
+## 0.1.0a3 — 2026-08-04
+
+### Added
+
+- Added the generic `unsafe_route_dependencies` hook to
+  `create_auth_router()` for consumer-owned dependencies on signup, signin, and
+  signout.
+- Added SQLite and PostgreSQL examples integrating
+  `fastapi-csrf-protect` as an example-only dependency.
+- Added documentation for consumer-owned CSRF protection and application-owned
+  mutation routes.
+
+### Security
+
+- AuthLoom does not provide CSRF token cryptography, cookies, or an issuance
+  endpoint. Consumers select and configure their own CSRF solution.
+- `fastapi-csrf-protect` is used only by the examples and is not a core
+  AuthLoom dependency.
+
 ## 0.1.0a2
 
 ### Added
