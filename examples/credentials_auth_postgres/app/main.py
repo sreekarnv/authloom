@@ -1,7 +1,12 @@
 from typing import Annotated
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Header, Request
+from fastapi.responses import JSONResponse
+from fastapi_csrf_protect import CsrfProtect
+from fastapi_csrf_protect.exceptions import CsrfProtectError
+from pydantic_settings import BaseSettings
 
+from app.config import settings
 from app.database import AsyncSessionLocal
 from authloom import AuthLoom, create_auth_router
 from authloom.db import User
@@ -10,6 +15,29 @@ from authloom.settings import (
     AuthLoomCookieSessionConfig,
 )
 
+
+class CsrfSettings(BaseSettings):
+    secret_key: str
+    cookie_samesite: str = "lax"
+
+
+@CsrfProtect.load_config
+def get_csrf_config() -> CsrfSettings:
+    return CsrfSettings(secret_key=settings.csrf_secret_key)
+
+
+csrf_protect_dependency = Depends()
+
+
+async def verify_csrf(
+    request: Request,
+    csrf_header: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
+    csrf_protect: CsrfProtect = csrf_protect_dependency,
+) -> None:
+    await csrf_protect.validate_csrf(request)
+
+
+csrf_dependency = Depends(verify_csrf)
 app = FastAPI()
 auth = AuthLoom(
     config=AuthLoomConfig(
@@ -23,7 +51,28 @@ auth = AuthLoom(
     )
 )
 
-app.include_router(create_auth_router(auth))
+app.include_router(
+    create_auth_router(
+        auth,
+        unsafe_route_dependencies=(csrf_dependency,),
+    )
+)
+
+
+@app.exception_handler(CsrfProtectError)
+async def csrf_exception_handler(request: Request, exc: CsrfProtectError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
+
+
+@app.get("/csrf")
+def get_csrf_token(csrf_protect: CsrfProtect = csrf_protect_dependency):
+    csrf_token, signed_token = csrf_protect.generate_csrf_tokens()
+    response = JSONResponse({"csrf_token": csrf_token})
+    csrf_protect.set_csrf_cookie(signed_token, response)
+    return response
 
 
 @app.get("/me")
@@ -54,3 +103,8 @@ async def optional_auth(
             "updated_at": user.updated_at,
         },
     }
+
+
+@app.post("/example-mutation", dependencies=[csrf_dependency])
+async def example_mutation():
+    return {"status": "changed"}

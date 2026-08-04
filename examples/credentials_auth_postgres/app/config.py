@@ -1,8 +1,13 @@
-from pydantic_settings import BaseSettings
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://authloom:authloom@localhost:5432/authloom"
+    csrf_secret_key: str = Field(min_length=32)
+
+    model_config = SettingsConfigDict(env_file=".env")
 
 
-settings = Settings()
+# BaseSettings fills this required field from the environment or .env at runtime.
+settings = Settings()  # pyright: ignore[reportCallIssue]

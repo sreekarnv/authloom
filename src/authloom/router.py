@@ -1,6 +1,8 @@
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.params import Depends as DependsParam
 
 from authloom.db.schema import User
 from authloom.dtos import (
@@ -20,11 +22,19 @@ from authloom.exceptions import (
 from authloom.service import AuthLoom
 
 
-def create_auth_router(auth: AuthLoom) -> APIRouter:
+def create_auth_router(
+    auth: AuthLoom,
+    *,
+    unsafe_route_dependencies: Sequence[DependsParam] | None = None,
+) -> APIRouter:
+    """Create AuthLoom routes with optional dependencies for mutation routes."""
     router = APIRouter(prefix="/auth", tags=["AuthLoom"])
 
     @router.post(
-        "/signup", status_code=status.HTTP_201_CREATED, response_model=AuthHttpResDto
+        "/signup",
+        status_code=status.HTTP_201_CREATED,
+        response_model=AuthHttpResDto,
+        dependencies=unsafe_route_dependencies,
     )
     async def signup(input: SignupHttpReqDto, response: Response):
         try:
@@ -62,7 +72,10 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
             ) from exc
 
     @router.post(
-        "/signin", status_code=status.HTTP_200_OK, response_model=AuthHttpResDto
+        "/signin",
+        status_code=status.HTTP_200_OK,
+        response_model=AuthHttpResDto,
+        dependencies=unsafe_route_dependencies,
     )
     async def signin(input: SigninHttpReqDto, response: Response):
         try:
@@ -92,7 +105,11 @@ def create_auth_router(auth: AuthLoom) -> APIRouter:
         )
         return AuthHttpResDto(message="logged in successfully", user=user)
 
-    @router.post("/signout", status_code=status.HTTP_204_NO_CONTENT)
+    @router.post(
+        "/signout",
+        status_code=status.HTTP_204_NO_CONTENT,
+        dependencies=unsafe_route_dependencies,
+    )
     async def signout(request: Request, response: Response):
         token_raw = request.cookies.get(auth.config.cookie_session.cookie_name)
         if not token_raw:

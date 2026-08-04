@@ -11,6 +11,7 @@ It demonstrates:
 - AuthLoom database metadata combined with application-owned SQLAlchemy models.
 - Consumer-owned Alembic migrations against PostgreSQL.
 - Local PostgreSQL setup through Docker Compose.
+- Consumer-owned CSRF protection for browser cookie flows.
 
 ## Responsibilities
 
@@ -28,6 +29,7 @@ The consuming application owns:
 - Application models, such as `Post`.
 - Application routes that use AuthLoom authentication dependencies.
 - Environment and deployment-specific configuration.
+- CSRF token issuance, validation, and cookie/header configuration.
 
 
 ## Install
@@ -37,7 +39,7 @@ From this directory:
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -e ../../ "fastapi[standard]" alembic asyncpg
+pip install -e ../../ "fastapi[standard]" alembic asyncpg fastapi-csrf-protect==1.0.7
 ```
 
 When copied into a separate application, replace `pip install ../../` with a
@@ -79,6 +81,12 @@ From this directory:
 fastapi dev
 ```
 
+Set a strong `CSRF_SECRET_KEY` before starting the application:
+
+```bash
+CSRF_SECRET_KEY='replace-with-a-long-random-value' fastapi dev
+```
+
 The app will be available at:
 
 ```text
@@ -89,12 +97,26 @@ http://127.0.0.1:8000
 
 Use a cookie jar so curl preserves the session cookie between requests.
 
+Fetch a CSRF token before unsafe requests:
+
+```bash
+curl -i -c cookies.txt http://127.0.0.1:8000/csrf
+```
+
+Send the returned token in the `X-CSRF-Token` request header. Follow the
+`fastapi-csrf-protect` documentation for client-side token handling.
+
+In `/docs`, execute `GET /csrf` first, copy the `csrf_token` value, then use
+`Try it out` on an unsafe route and enter that value in the `X-CSRF-Token`
+header field.
+
 ### Signup
 
 ```bash
-curl -i -c cookies.txt \
+curl -i -b cookies.txt -c cookies.txt \
   -X POST http://127.0.0.1:8000/auth/signup \
   -H 'content-type: application/json' \
+  -H 'X-CSRF-Token: <csrf-token>' \
   -d '{
     "name": "Example User",
     "email": "user@example.com",
@@ -137,17 +159,27 @@ curl -i -b cookies.txt http://127.0.0.1:8000/optional-auth
 
 ```bash
 curl -i -b cookies.txt -c cookies.txt \
-  -X POST http://127.0.0.1:8000/auth/signout
+  -X POST http://127.0.0.1:8000/auth/signout \
+  -H 'X-CSRF-Token: <csrf-token>'
 ```
 
 After signout, authenticated routes should return `401`.
 
+### Application-Owned Mutation
+
+```bash
+curl -i -b cookies.txt \
+  -X POST http://127.0.0.1:8000/example-mutation \
+  -H 'X-CSRF-Token: <csrf-token>'
+```
+
 ### Signin Again
 
 ```bash
-curl -i -c cookies.txt \
+curl -i -b cookies.txt -c cookies.txt \
   -X POST http://127.0.0.1:8000/auth/signin \
   -H 'content-type: application/json' \
+  -H 'X-CSRF-Token: <csrf-token>' \
   -d '{
     "email": "user@example.com",
     "password": "abcdefghijklmno"
@@ -170,3 +202,11 @@ AuthLoomCookieSessionConfig(
 For HTTPS production deployments, set `secure=True`.
 
 If you use `samesite="none"`, AuthLoom requires `secure=True`.
+
+## CSRF Responsibility
+
+This example uses `fastapi-csrf-protect` to protect AuthLoom's signup, signin,
+and signout routes through `unsafe_route_dependencies`. It also protects the
+application-owned `POST /example-mutation` route. AuthLoom does not generate or
+validate these tokens, and the example does not claim that they are bound to
+AuthLoom sessions. CORS remains a separate application configuration concern.
