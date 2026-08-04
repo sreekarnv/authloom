@@ -95,7 +95,7 @@ header field.
 ### Signup
 
 ```bash
-curl -i -c cookies.txt \
+curl -i -b cookies.txt -c cookies.txt \
   -X POST http://127.0.0.1:8000/auth/signup \
   -H 'content-type: application/json' \
   -H 'X-CSRF-Token: <csrf-token>' \
@@ -158,7 +158,7 @@ curl -i -b cookies.txt \
 ### Signin Again
 
 ```bash
-curl -i -c cookies.txt \
+curl -i -b cookies.txt -c cookies.txt \
   -X POST http://127.0.0.1:8000/auth/signin \
   -H 'content-type: application/json' \
   -H 'X-CSRF-Token: <csrf-token>' \

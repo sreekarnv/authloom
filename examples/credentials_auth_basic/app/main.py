@@ -31,7 +31,7 @@ csrf_protect_dependency = Depends()
 
 async def verify_csrf(
     request: Request,
-    csrf_header: Annotated[str, Header(alias="X-CSRF-Token")],
+    csrf_header: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
     csrf_protect: CsrfProtect = csrf_protect_dependency,
 ) -> None:
     await csrf_protect.validate_csrf(request)
