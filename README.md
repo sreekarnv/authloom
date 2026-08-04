@@ -2,7 +2,7 @@
 
 AuthLoom is a Python 3.12 authentication library for FastAPI applications.
 
-It currently provides email/password signup and signin, cookie-backed database sessions, required and optional current-user dependencies, Argon2 password hashing, normalized email handling, hashed session tokens, expiry, and signout revocation.
+It currently provides email/password signup and signin, cookie-backed database sessions, required and optional current-user dependencies, generic dependencies for built-in mutation routes, Argon2 password hashing, normalized email handling, hashed session tokens, expiry, and signout revocation.
 
 AuthLoom is pre-release software. APIs and database integration details may change before the first stable release.
 
@@ -190,6 +190,10 @@ solution, such as `fastapi-csrf-protect`, another library, or an application-own
 implementation. AuthLoom provides a generic dependency hook for attaching that
 solution to its built-in mutation routes. CORS and trusted-origin configuration
 remain separate application responsibilities.
+
+The `fastapi-csrf-protect` integration shown in the example applications is an
+optional example dependency. It is not installed by or required by core
+AuthLoom.
 
 See [`docs/security-model.md`](docs/security-model.md) for more detail.
 
