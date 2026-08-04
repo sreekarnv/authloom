@@ -18,6 +18,25 @@ AuthLoom currently provides:
 - `HttpOnly` cookie support.
 - Generic invalid-credential responses for signin failures.
 
+## CSRF Responsibility Boundary
+
+AuthLoom authenticates browser requests with automatically submitted cookies.
+Applications using cookie authentication must therefore configure CSRF protection
+for unsafe requests. `SameSite` is useful defense in depth, but it may not be a
+complete CSRF defence for every browser flow.
+
+AuthLoom does not provide or globally enforce a CSRF mechanism. It does not define
+a token format, generate CSRF tokens, create a CSRF cookie, or provide a CSRF
+issuance endpoint. The consuming application selects and configures its CSRF
+solution, including token issuance, validation, cookie and header settings, and
+frontend handling. `fastapi-csrf-protect` is one possible integration, not a
+required dependency or an AuthLoom security guarantee.
+
+Consumers can attach their CSRF dependency to AuthLoom's built-in unsafe routes
+through `create_auth_router(..., unsafe_route_dependencies=...)`. Application-owned
+mutation routes must attach the same consumer-owned protection separately. CORS
+and trusted-origin configuration are separate from CSRF protection.
+
 ## Sign-In Failures
 
 Unknown email and wrong password attempts return the same invalid-credentials
@@ -46,7 +65,8 @@ The consuming application remains responsible for deployment and product-specifi
 
 - HTTPS and reverse proxy configuration.
 - Rate limiting and brute-force protection.
-- CSRF protection beyond the configured cookie policy, if required by the application.
+- CSRF token issuance and validation.
+- CSRF protection beyond the configured cookie policy.
 - Database migrations and operational database security.
 - Logging, monitoring, and incident response.
 - Authorization rules for application resources.

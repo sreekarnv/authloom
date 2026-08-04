@@ -153,6 +153,32 @@ app = FastAPI()
 app.include_router(create_auth_router(auth))
 ```
 
+### Add CSRF Protection
+
+AuthLoom does not provide CSRF protection. If your application uses cookie
+authentication, pass your own FastAPI dependency to the mutation routes:
+
+```python
+from fastapi import Depends
+
+from authloom import create_auth_router
+
+csrf_dependency = Depends(verify_csrf_request)
+
+app.include_router(
+    create_auth_router(
+        auth,
+        unsafe_route_dependencies=(csrf_dependency,),
+    )
+)
+```
+
+The dependency runs before signup, signin, and signout. It does not apply to
+`GET /auth/me`. Add the same dependency to your own mutation routes.
+
+You may use [`fastapi-csrf-protect`](https://pypi.org/project/fastapi-csrf-protect/),
+another library, or your own implementation. Configure CORS separately.
+
 The router is mounted at `/auth` and provides:
 
 | Method | Path | Description |
@@ -332,7 +358,8 @@ It does not currently provide:
 - JWT access or refresh tokens.
 - Roles, permissions, organizations, or multi-tenancy.
 - Packaged database migrations or a migration CLI.
-- A production CSRF protection system beyond the configured cookie policy.
+- A CSRF token or cookie mechanism; configure consumer-owned protection for
+  cookie-authenticated browser applications.
 
 ## Reference Implementations
 

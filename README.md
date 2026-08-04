@@ -178,7 +178,18 @@ cases, using a dummy hash for unknown users, to reduce account-enumeration
 timing differences. This does not replace rate limiting or brute-force
 protection.
 
-Production deployments should use HTTPS and `secure=True` cookies. AuthLoom does not add a separate CSRF protection system beyond the configured cookie policy.
+Production deployments should use HTTPS and `secure=True` cookies. AuthLoom uses
+automatically submitted browser cookies for authentication, so applications that
+authenticate browsers with those cookies must configure CSRF protection for unsafe
+requests. `SameSite` reduces some cross-site request risks but is not a complete
+CSRF defence for every browser flow.
+
+AuthLoom does not provide a CSRF token format, CSRF cookie, issuance endpoint, or
+global CSRF middleware. The consuming application selects and configures a CSRF
+solution, such as `fastapi-csrf-protect`, another library, or an application-owned
+implementation. AuthLoom provides a generic dependency hook for attaching that
+solution to its built-in mutation routes. CORS and trusted-origin configuration
+remain separate application responsibilities.
 
 See [`docs/security-model.md`](docs/security-model.md) for more detail.
 
