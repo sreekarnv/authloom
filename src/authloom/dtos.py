@@ -70,3 +70,7 @@ class SessionResDto(BaseModel):
     id: str
     token_raw: str
     expires_at: datetime
+
+
+class RequestPasswordResetHttpReqDto(BaseModel):
+    email: EmailStr

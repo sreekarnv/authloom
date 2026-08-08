@@ -7,6 +7,7 @@ from fastapi.params import Depends as DependsParam
 from authloom.db.schema import User
 from authloom.dtos import (
     AuthHttpResDto,
+    RequestPasswordResetHttpReqDto,
     SigninHttpReqDto,
     SigninSrvInputDto,
     SignupHttpReqDto,
@@ -27,7 +28,6 @@ def create_auth_router(
     *,
     unsafe_route_dependencies: Sequence[DependsParam] | None = None,
 ) -> APIRouter:
-    """Create AuthLoom routes with optional dependencies for mutation routes."""
     router = APIRouter(prefix="/auth", tags=["AuthLoom"])
 
     @router.post(
@@ -131,5 +131,17 @@ def create_auth_router(
         user: Annotated[User, Depends(auth.require_current_user)],
     ):
         return UserResDto.model_validate(user)
+
+    @router.post(
+        "/request-password-reset",
+        status_code=status.HTTP_200_OK,
+        dependencies=unsafe_route_dependencies,
+    )
+    async def request_password_reset(input: RequestPasswordResetHttpReqDto):
+        token = await auth.request_password_reset(email=input.email)
+        # TODO: send in the email later with the token
+        print(f"Token is {token}")
+
+        return {"message": "password reset sent to your email"}
 
     return router

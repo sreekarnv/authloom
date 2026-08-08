@@ -28,6 +28,9 @@ class User(Base):
     sessions: Mapped[list["Session"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    reset_password_tokens: Mapped[list["ResetPasswordToken"]] = relationship(
+        back_populates="user", cascade="all"
+    )
 
 
 class Session(Base):
@@ -45,3 +48,20 @@ class Session(Base):
         ForeignKey("authloom_users.id", ondelete="CASCADE"), index=True, nullable=False
     )
     user: Mapped["User"] = relationship(back_populates="sessions")
+
+
+class ResetPasswordToken(Base):
+    __tablename__ = "authloom_reset_password_tokens"
+
+    id = mapped_column(VARCHAR, primary_key=True, default=CUID_GENERATOR)
+    token = mapped_column(VARCHAR(64), unique=True, index=True, nullable=False)
+    user_id = mapped_column(
+        ForeignKey("authloom_users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    created_at = mapped_column(
+        UTCDateTime(), nullable=False, default=utc_now, server_default=func.now()
+    )
+    expires_at = mapped_column(UTCDateTime(), nullable=False)
+    used_at = mapped_column(UTCDateTime(), nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="reset_password_tokens")

@@ -10,7 +10,7 @@ from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import undefer
 
-from authloom.db.schema import Session, User
+from authloom.db.schema import ResetPasswordToken, Session, User
 from authloom.db.utils.time import utc_now
 from authloom.dtos import (
     SessionResDto,
@@ -35,6 +35,15 @@ def hash_session_token(token_raw: str) -> str:
 def generate_session_token() -> tuple[str, str]:
     token = secrets.token_urlsafe(32)
     return token, hash_session_token(token)
+
+
+def hash_password_reset_token(token_raw: str) -> str:
+    return hashlib.sha256(token_raw.encode("utf-8")).hexdigest()
+
+
+def generate_password_reset_token() -> tuple[str, str]:
+    token = secrets.token_urlsafe(32)
+    return token, hash_password_reset_token(token)
 
 
 class AuthLoom:
@@ -284,3 +293,31 @@ class AuthLoom:
             await session.commit()
 
         return q.rowcount or 0
+
+    async def request_password_reset(self, email: str) -> str | None:
+        email_normalizer = email_normalize.Normalizer()
+        normalized_result = await email_normalizer.normalize(email)
+
+        token = None
+
+        async with self.session_factory() as session:
+            userq = await session.execute(
+                select(User)
+                .where(User.email == normalized_result.normalized_address)
+                .limit(1)
+            )
+            user = userq.scalar_one_or_none()
+
+            if not user:
+                return None
+
+            token, token_hash = generate_password_reset_token()
+            password_reset_token = ResetPasswordToken(
+                token=token_hash,
+                user_id=user.id,
+                expires_at=utc_now() + timedelta(minutes=15),
+            )
+            session.add(password_reset_token)
+            await session.commit()
+
+        return token
