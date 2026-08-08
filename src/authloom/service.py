@@ -279,9 +279,7 @@ class AuthLoom:
 
         async with self.session_factory() as session:
             q = await session.execute(
-                update(Session)
-                .where(and_(*conditions))
-                .values(revoked_at=now)
+                update(Session).where(and_(*conditions)).values(revoked_at=now)
             )
             await session.commit()
 
