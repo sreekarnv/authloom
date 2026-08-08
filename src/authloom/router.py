@@ -7,6 +7,8 @@ from fastapi.params import Depends as DependsParam
 from authloom.db.schema import User
 from authloom.dtos import (
     AuthHttpResDto,
+    PasswordResetHttpReqDto,
+    RequestPasswordResetHttpReqDto,
     SigninHttpReqDto,
     SigninSrvInputDto,
     SignupHttpReqDto,
@@ -15,6 +17,7 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    InvalidPasswordResetTokenException,
     PasswordPolicyException,
     SessionCreationException,
     UserAlreadyExistsException,
@@ -27,7 +30,6 @@ def create_auth_router(
     *,
     unsafe_route_dependencies: Sequence[DependsParam] | None = None,
 ) -> APIRouter:
-    """Create AuthLoom routes with optional dependencies for mutation routes."""
     router = APIRouter(prefix="/auth", tags=["AuthLoom"])
 
     @router.post(
@@ -131,5 +133,44 @@ def create_auth_router(
         user: Annotated[User, Depends(auth.require_current_user)],
     ):
         return UserResDto.model_validate(user)
+
+    @router.post(
+        "/request-password-reset",
+        status_code=status.HTTP_200_OK,
+        dependencies=unsafe_route_dependencies,
+    )
+    async def request_password_reset(input: RequestPasswordResetHttpReqDto):
+        token = await auth.request_password_reset(email=input.email)
+
+        if token is not None and auth.config.hooks.on_request_password_reset:
+            auth.config.hooks.on_request_password_reset(input.email, token)
+
+        return {"message": "password reset sent to your email"}
+
+    @router.post(
+        "/password-reset",
+        status_code=status.HTTP_200_OK,
+        dependencies=unsafe_route_dependencies,
+    )
+    async def verify_token_password_reset(token: str, input: PasswordResetHttpReqDto):
+        try:
+            await auth.verify_token_reset_password(
+                token_raw=token, new_password=input.password
+            )
+        except InvalidPasswordResetTokenException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid or expired password reset token",
+            ) from exc
+        except PasswordPolicyException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    "code": exc.code,
+                    "message": exc.message,
+                },
+            ) from exc
+
+        return {"message": "password reset successful"}
 
     return router

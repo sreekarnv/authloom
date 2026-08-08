@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
@@ -54,6 +55,10 @@ class AuthLoomPasswordConfig(BaseModel):
         return self
 
 
+class AuthLoomHooks(BaseModel):
+    on_request_password_reset: Callable[[str, str], None] | None = None
+
+
 class AuthLoomConfig(BaseSettings):
     cookie_session: AuthLoomCookieSessionConfig = Field(
         default_factory=AuthLoomCookieSessionConfig
@@ -62,3 +67,4 @@ class AuthLoomConfig(BaseSettings):
     password_config: AuthLoomPasswordConfig = Field(
         default_factory=AuthLoomPasswordConfig
     )
+    hooks: AuthLoomHooks = Field(default_factory=AuthLoomHooks)

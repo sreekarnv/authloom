@@ -9,6 +9,10 @@ class InvalidCredentialsException(Exception):
     pass
 
 
+class InvalidPasswordResetTokenException(Exception):
+    pass
+
+
 class SessionCreationException(Exception):
     pass
 

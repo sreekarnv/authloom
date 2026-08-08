@@ -10,7 +10,7 @@ from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import undefer
 
-from authloom.db.schema import Session, User
+from authloom.db.schema import ResetPasswordToken, Session, User
 from authloom.db.utils.time import utc_now
 from authloom.dtos import (
     SessionResDto,
@@ -20,6 +20,7 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    InvalidPasswordResetTokenException,
     PasswordPolicyCode,
     PasswordPolicyException,
     SessionCreationException,
@@ -35,6 +36,15 @@ def hash_session_token(token_raw: str) -> str:
 def generate_session_token() -> tuple[str, str]:
     token = secrets.token_urlsafe(32)
     return token, hash_session_token(token)
+
+
+def hash_password_reset_token(token_raw: str) -> str:
+    return hashlib.sha256(token_raw.encode("utf-8")).hexdigest()
+
+
+def generate_password_reset_token() -> tuple[str, str]:
+    token = secrets.token_urlsafe(32)
+    return token, hash_password_reset_token(token)
 
 
 class AuthLoom:
@@ -284,3 +294,79 @@ class AuthLoom:
             await session.commit()
 
         return q.rowcount or 0
+
+    async def request_password_reset(self, email: str) -> str | None:
+        email_normalizer = email_normalize.Normalizer()
+        normalized_result = await email_normalizer.normalize(email)
+
+        token = None
+
+        async with self.session_factory() as session:
+            userq = await session.execute(
+                select(User)
+                .where(User.email == normalized_result.normalized_address)
+                .limit(1)
+            )
+            user = userq.scalar_one_or_none()
+
+            if not user:
+                return None
+
+            token, token_hash = generate_password_reset_token()
+            password_reset_token = ResetPasswordToken(
+                token=token_hash,
+                user_id=user.id,
+                expires_at=utc_now() + timedelta(minutes=15),
+            )
+            session.add(password_reset_token)
+            await session.commit()
+
+        return token
+
+    async def verify_token_reset_password(
+        self, token_raw: str, new_password: str
+    ) -> None:
+        if len(new_password) < self.config.password_config.min_length:
+            raise PasswordPolicyException(
+                code=PasswordPolicyCode.TOO_SHORT,
+                message=(
+                    f"Password must contains at least "
+                    f"{self.config.password_config.min_length} characters."
+                ),
+            )
+
+        if len(new_password) > self.config.password_config.max_length:
+            raise PasswordPolicyException(
+                code=PasswordPolicyCode.TOO_LONG,
+                message=(
+                    f"Password must contains at most "
+                    f"{self.config.password_config.max_length} characters."
+                ),
+            )
+
+        token_hash = hash_password_reset_token(token_raw=token_raw)
+        now = utc_now()
+
+        async with self.session_factory() as session:
+            q = await session.execute(
+                update(ResetPasswordToken)
+                .where(
+                    ResetPasswordToken.token == token_hash,
+                    ResetPasswordToken.used_at.is_(None),
+                    ResetPasswordToken.expires_at > now,
+                )
+                .values(used_at=now)
+                .returning(ResetPasswordToken.user_id)
+            )
+            user_id = q.scalar_one_or_none()
+
+            if user_id is None:
+                raise InvalidPasswordResetTokenException()
+
+            password_hash = self.password_hasher.hash(new_password)
+
+            await session.execute(
+                update(User).where(User.id == user_id).values(password=password_hash)
+            )
+
+            await session.commit()
