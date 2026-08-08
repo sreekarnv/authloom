@@ -74,3 +74,20 @@ class SessionResDto(BaseModel):
 
 class RequestPasswordResetHttpReqDto(BaseModel):
     email: EmailStr
+
+
+class PasswordResetHttpReqDto(BaseModel):
+    password: str
+    password_confirm: str
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> Self:
+        if self.password != self.password_confirm:
+            raise ValueError("passwords do not match")
+
+        return self
+
+    @field_validator("password", "password_confirm")
+    @classmethod
+    def normalize_password(cls, v: str) -> str:
+        return unicodedata.normalize("NFC", v)

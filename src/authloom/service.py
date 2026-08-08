@@ -20,6 +20,7 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    InvalidPasswordResetTokenException,
     PasswordPolicyCode,
     PasswordPolicyException,
     SessionCreationException,
@@ -321,3 +322,59 @@ class AuthLoom:
             await session.commit()
 
         return token
+
+    async def verify_token_reset_password(
+        self, token_raw: str, new_password: str
+    ) -> None:
+        if len(new_password) < self.config.password_config.min_length:
+            raise PasswordPolicyException(
+                code=PasswordPolicyCode.TOO_SHORT,
+                message=(
+                    f"Password must contains at least "
+                    f"{self.config.password_config.min_length} characters."
+                ),
+            )
+
+        if len(new_password) > self.config.password_config.max_length:
+            raise PasswordPolicyException(
+                code=PasswordPolicyCode.TOO_LONG,
+                message=(
+                    f"Password must contains at most "
+                    f"{self.config.password_config.max_length} characters."
+                ),
+            )
+
+        token_hash = hash_password_reset_token(token_raw=token_raw)
+        password_hash = self.password_hasher.hash(new_password)
+        now = utc_now()
+
+        async with self.session_factory() as session:
+            q = await session.execute(
+                select(ResetPasswordToken)
+                .where(
+                    ResetPasswordToken.token == token_hash,
+                    ResetPasswordToken.used_at.is_(None),
+                    ResetPasswordToken.expires_at > now,
+                )
+                .limit(1)
+            )
+            reset_password_token = q.scalar_one_or_none()
+
+            if not reset_password_token:
+                raise InvalidPasswordResetTokenException()
+
+            await session.execute(
+                update(User)
+                .where(User.id == reset_password_token.user_id)
+                .values(password=password_hash)
+            )
+
+            await session.execute(
+                update(ResetPasswordToken)
+                .where(
+                    ResetPasswordToken.id == reset_password_token.id,
+                )
+                .values(used_at=now)
+            )
+
+            await session.commit()

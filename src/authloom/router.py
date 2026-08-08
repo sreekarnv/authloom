@@ -7,6 +7,7 @@ from fastapi.params import Depends as DependsParam
 from authloom.db.schema import User
 from authloom.dtos import (
     AuthHttpResDto,
+    PasswordResetHttpReqDto,
     RequestPasswordResetHttpReqDto,
     SigninHttpReqDto,
     SigninSrvInputDto,
@@ -16,6 +17,7 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    InvalidPasswordResetTokenException,
     PasswordPolicyException,
     SessionCreationException,
     UserAlreadyExistsException,
@@ -143,5 +145,31 @@ def create_auth_router(
         print(f"Token is {token}")
 
         return {"message": "password reset sent to your email"}
+
+    @router.post(
+        "/password-reset",
+        status_code=status.HTTP_200_OK,
+        dependencies=unsafe_route_dependencies,
+    )
+    async def verify_token_password_reset(token: str, input: PasswordResetHttpReqDto):
+        try:
+            await auth.verify_token_reset_password(
+                token_raw=token, new_password=input.password
+            )
+        except InvalidPasswordResetTokenException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="invalid or expired password reset token",
+            ) from exc
+        except PasswordPolicyException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    "code": exc.code,
+                    "message": exc.message,
+                },
+            ) from exc
+
+        return {"message": "password reset successful"}
 
     return router
