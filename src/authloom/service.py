@@ -264,19 +264,24 @@ class AuthLoom:
 
         return q.rowcount or 0
 
-    async def revoke_all_sessions(self, *, user_id: str, except_session_id: str) -> int:
+    async def revoke_all_sessions(
+        self, *, user_id: str, except_session_id: str | None = None
+    ) -> int:
         now = utc_now()
+        conditions = [
+            Session.user_id == user_id,
+            Session.revoked_at.is_(None),
+            Session.expires_at > now,
+        ]
+
+        if except_session_id is not None:
+            conditions.append(Session.id != except_session_id)
 
         async with self.session_factory() as session:
             q = await session.execute(
-                update(Session).where(
-                    and_(
-                        Session.id != except_session_id,
-                        Session.user_id == user_id,
-                        Session.revoked_at.is_(None),
-                        Session.expires_at > now
-                    )
-                ).values(revoked_at=now)
+                update(Session)
+                .where(and_(*conditions))
+                .values(revoked_at=now)
             )
             await session.commit()
 
