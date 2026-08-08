@@ -141,8 +141,9 @@ def create_auth_router(
     )
     async def request_password_reset(input: RequestPasswordResetHttpReqDto):
         token = await auth.request_password_reset(email=input.email)
-        # TODO: send in the email later with the token
-        print(f"Token is {token}")
+
+        if token is not None and auth.config.hooks.on_request_password_reset:
+            auth.config.hooks.on_request_password_reset(input.email, token)
 
         return {"message": "password reset sent to your email"}
 
