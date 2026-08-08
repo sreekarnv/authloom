@@ -6,7 +6,7 @@ import email_normalize
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import HTTPException, Request, status
-from sqlalchemy import delete, or_, select
+from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import undefer
 
@@ -259,6 +259,24 @@ class AuthLoom:
                         Session.revoked_at.is_not(None),
                     )
                 )
+            )
+            await session.commit()
+
+        return q.rowcount or 0
+
+    async def revoke_all_sessions(self, *, user_id: str, except_session_id: str) -> int:
+        now = utc_now()
+
+        async with self.session_factory() as session:
+            q = await session.execute(
+                update(Session).where(
+                    and_(
+                        Session.id != except_session_id,
+                        Session.user_id == user_id,
+                        Session.revoked_at.is_(None),
+                        Session.expires_at > now
+                    )
+                ).values(revoked_at=now)
             )
             await session.commit()
 
