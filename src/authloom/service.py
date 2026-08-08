@@ -345,7 +345,6 @@ class AuthLoom:
             )
 
         token_hash = hash_password_reset_token(token_raw=token_raw)
-        password_hash = self.password_hasher.hash(new_password)
         now = utc_now()
 
         async with self.session_factory() as session:
@@ -362,6 +361,8 @@ class AuthLoom:
 
             if not reset_password_token:
                 raise InvalidPasswordResetTokenException()
+
+            password_hash = self.password_hasher.hash(new_password)
 
             await session.execute(
                 update(User)
