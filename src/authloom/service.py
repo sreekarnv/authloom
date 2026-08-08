@@ -349,33 +349,24 @@ class AuthLoom:
 
         async with self.session_factory() as session:
             q = await session.execute(
-                select(ResetPasswordToken)
+                update(ResetPasswordToken)
                 .where(
                     ResetPasswordToken.token == token_hash,
                     ResetPasswordToken.used_at.is_(None),
                     ResetPasswordToken.expires_at > now,
                 )
-                .limit(1)
+                .values(used_at=now)
+                .returning(ResetPasswordToken.user_id)
             )
-            reset_password_token = q.scalar_one_or_none()
+            user_id = q.scalar_one_or_none()
 
-            if not reset_password_token:
+            if user_id is None:
                 raise InvalidPasswordResetTokenException()
 
             password_hash = self.password_hasher.hash(new_password)
 
             await session.execute(
-                update(User)
-                .where(User.id == reset_password_token.user_id)
-                .values(password=password_hash)
-            )
-
-            await session.execute(
-                update(ResetPasswordToken)
-                .where(
-                    ResetPasswordToken.id == reset_password_token.id,
-                )
-                .values(used_at=now)
+                update(User).where(User.id == user_id).values(password=password_hash)
             )
 
             await session.commit()
