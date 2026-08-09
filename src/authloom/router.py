@@ -9,6 +9,7 @@ from authloom.dtos import (
     AuthHttpResDto,
     ChangePasswordReqDto,
     PasswordResetHttpReqDto,
+    RequestEmailVerificationHttpReqDto,
     RequestPasswordResetHttpReqDto,
     SigninHttpReqDto,
     SigninSrvInputDto,
@@ -147,6 +148,19 @@ def create_auth_router(
             auth.config.hooks.on_request_password_reset(input.email, token)
 
         return {"message": "password reset sent to your email"}
+
+    @router.post(
+        "/request-email-verification",
+        status_code=status.HTTP_200_OK,
+        dependencies=unsafe_route_dependencies,
+    )
+    async def request_email_verification(input: RequestEmailVerificationHttpReqDto):
+        token = await auth.request_email_verification(email=input.email)
+
+        if token is not None and auth.config.hooks.on_request_email_verification:
+            auth.config.hooks.on_request_email_verification(input.email, token)
+
+        return {"message": "email verification sent to your email"}
 
     @router.post(
         "/password-reset",

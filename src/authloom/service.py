@@ -10,7 +10,7 @@ from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import undefer
 
-from authloom.db.schema import ResetPasswordToken, Session, User
+from authloom.db.schema import EmailVerificationToken, ResetPasswordToken, Session, User
 from authloom.db.utils.time import utc_now
 from authloom.dtos import (
     SessionResDto,
@@ -45,6 +45,15 @@ def hash_password_reset_token(token_raw: str) -> str:
 def generate_password_reset_token() -> tuple[str, str]:
     token = secrets.token_urlsafe(32)
     return token, hash_password_reset_token(token)
+
+
+def hash_email_verification_token(token_raw: str) -> str:
+    return hashlib.sha256(token_raw.encode("utf-8")).hexdigest()
+
+
+def generate_email_verification_token() -> tuple[str, str]:
+    token = secrets.token_urlsafe(32)
+    return token, hash_email_verification_token(token)
 
 
 class AuthLoom:
@@ -321,6 +330,34 @@ class AuthLoom:
                 expires_at=utc_now() + timedelta(minutes=15),
             )
             session.add(password_reset_token)
+            await session.commit()
+
+        return token
+
+    async def request_email_verification(self, email: str) -> str | None:
+        email_normalizer = email_normalize.Normalizer()
+        normalized_result = await email_normalizer.normalize(email)
+
+        token = None
+
+        async with self.session_factory() as session:
+            userq = await session.execute(
+                select(User)
+                .where(User.email == normalized_result.normalized_address)
+                .limit(1)
+            )
+            user = userq.scalar_one_or_none()
+
+            if not user:
+                return None
+
+            token, token_hash = generate_email_verification_token()
+            email_verification_token = EmailVerificationToken(
+                token_hash=token_hash,
+                user_id=user.id,
+                expires_at=utc_now() + timedelta(minutes=15),
+            )
+            session.add(email_verification_token)
             await session.commit()
 
         return token
