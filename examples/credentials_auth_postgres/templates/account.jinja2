@@ -1,0 +1,17 @@
+{% extends "base.jinja2" %}
+{% block title %}Account{% endblock %}
+{% block content %}
+<h1>Account</h1>
+<p>Name: {{ user.name }}</p>
+<p>Email: {{ user.email }}</p>
+<p>Email verified: {% if user.email_verified_at %}yes ({{ user.email_verified_at }}){% else %}no{% endif %}</p>
+
+{% if not user.email_verified_at %}
+<form method="post" action="/account/email-verification">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Request verification link</button>
+</form>
+{% endif %}
+
+<p><a href="/account/password">Change password</a></p>
+{% endblock %}

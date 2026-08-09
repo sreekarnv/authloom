@@ -1,0 +1,12 @@
+{% extends "base.jinja2" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<h1>Sign in</h1>
+<form method="post" action="/signin">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div><label>Email <input type="email" name="email" value="{{ form.email|default('') }}" required></label></div>
+    <div><label>Password <input type="password" name="password" required></label></div>
+    <button type="submit">Sign in</button>
+</form>
+<p><a href="/forgot-password">Forgot your password?</a></p>
+{% endblock %}

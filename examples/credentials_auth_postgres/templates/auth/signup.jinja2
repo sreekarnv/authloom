@@ -1,0 +1,13 @@
+{% extends "base.jinja2" %}
+{% block title %}Sign up{% endblock %}
+{% block content %}
+<h1>Sign up</h1>
+<form method="post" action="/signup">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div><label>Name <input name="name" value="{{ form.name|default('') }}" required></label></div>
+    <div><label>Email <input type="email" name="email" value="{{ form.email|default('') }}" required></label></div>
+    <div><label>Password <input type="password" name="password" required></label></div>
+    <p><label>Confirm password <input type="password" name="password_confirm" required></label></p>
+    <button type="submit">Create account</button>
+</form>
+{% endblock %}

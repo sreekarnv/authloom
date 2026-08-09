@@ -4,6 +4,8 @@ This example shows how a FastAPI application can consume AuthLoom for basic emai
 
 It demonstrates:
 
+- Plain Jinja2 template pages for signup, signin, signout, password reset,
+  password change, and email verification.
 - Signup, signin, signout, and AuthLoom's built-in `/auth/me` route.
 - An application-owned protected `/me` route.
 - An application-owned `/optional-auth` route that works with or without a session.
@@ -12,6 +14,7 @@ It demonstrates:
 - Consumer-owned Alembic migrations against PostgreSQL.
 - Local PostgreSQL setup through Docker Compose.
 - Consumer-owned CSRF protection for browser cookie flows.
+- Local email delivery through MailHog.
 
 The CSRF package is an example-only dependency and is not part of core AuthLoom.
 
@@ -31,7 +34,7 @@ The consuming application owns:
 - Application models, such as `Post`.
 - Application routes that use AuthLoom authentication dependencies.
 - Environment and deployment-specific configuration.
-- CSRF token issuance, validation, and cookie/header configuration.
+- CSRF token issuance, validation, and cookie/body configuration.
 
 
 ## Install
@@ -41,7 +44,7 @@ From this directory:
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -e ../../ "fastapi[standard]" alembic asyncpg fastapi-csrf-protect==1.0.7
+pip install -e ../../ "fastapi[standard]" Jinja2 python-multipart alembic asyncpg fastapi-csrf-protect==1.0.7
 ```
 
 When copied into a separate application, replace `pip install ../../` with a
@@ -52,7 +55,7 @@ normal AuthLoom package dependency.
 From this directory:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres mailhog
 ```
 
 The default database URL is:
@@ -89,6 +92,13 @@ Set a strong `CSRF_SECRET_KEY` before starting the application:
 CSRF_SECRET_KEY='replace-with-a-long-random-value' fastapi dev
 ```
 
+Password-reset and email-verification emails are delivered to MailHog. Open
+the MailHog inbox at `http://127.0.0.1:8025`. Set `APP_BASE_URL` when running
+the application at a different address.
+
+The application sends SMTP traffic to MailHog at `127.0.0.1:1025` by default.
+Override `SMTP_HOST`, `SMTP_PORT`, or `EMAIL_FROM` in `.env` when needed.
+
 The app will be available at:
 
 ```text
@@ -105,12 +115,11 @@ Fetch a CSRF token before unsafe requests:
 curl -i -c cookies.txt http://127.0.0.1:8000/csrf
 ```
 
-Send the returned token in the `X-CSRF-Token` request header. Follow the
-`fastapi-csrf-protect` documentation for client-side token handling.
+Include the returned token as the `csrf_token` field in each unsafe request.
+The HTML forms already include this hidden field.
 
-In `/docs`, execute `GET /csrf` first, copy the `csrf_token` value, then use
-`Try it out` on an unsafe route and enter that value in the `X-CSRF-Token`
-header field.
+In `/docs`, execute `GET /csrf` first, copy the `csrf_token` value, then include
+it in the JSON body of an unsafe route.
 
 ### Signup
 
@@ -118,8 +127,8 @@ header field.
 curl -i -b cookies.txt -c cookies.txt \
   -X POST http://127.0.0.1:8000/auth/signup \
   -H 'content-type: application/json' \
-  -H 'X-CSRF-Token: <csrf-token>' \
   -d '{
+    "csrf_token": "<csrf-token>",
     "name": "Example User",
     "email": "user@example.com",
     "password": "abcdefghijklmno",
@@ -162,7 +171,8 @@ curl -i -b cookies.txt http://127.0.0.1:8000/optional-auth
 ```bash
 curl -i -b cookies.txt -c cookies.txt \
   -X POST http://127.0.0.1:8000/auth/signout \
-  -H 'X-CSRF-Token: <csrf-token>'
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'csrf_token=<csrf-token>'
 ```
 
 After signout, authenticated routes should return `401`.
@@ -172,7 +182,8 @@ After signout, authenticated routes should return `401`.
 ```bash
 curl -i -b cookies.txt \
   -X POST http://127.0.0.1:8000/example-mutation \
-  -H 'X-CSRF-Token: <csrf-token>'
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d 'csrf_token=<csrf-token>'
 ```
 
 ### Signin Again
@@ -181,8 +192,8 @@ curl -i -b cookies.txt \
 curl -i -b cookies.txt -c cookies.txt \
   -X POST http://127.0.0.1:8000/auth/signin \
   -H 'content-type: application/json' \
-  -H 'X-CSRF-Token: <csrf-token>' \
   -d '{
+    "csrf_token": "<csrf-token>",
     "email": "user@example.com",
     "password": "abcdefghijklmno"
   }'
@@ -204,6 +215,23 @@ AuthLoomCookieSessionConfig(
 For HTTPS production deployments, set `secure=True`.
 
 If you use `samesite="none"`, AuthLoom requires `secure=True`.
+
+## HTML Routes
+
+The example renders plain Jinja2 templates without CSS or JavaScript:
+
+- `GET /` redirects to the account page or signin page.
+- `GET/POST /signup` creates an account and signs the user in.
+- `GET/POST /signin` signs the user in.
+- `POST /signout` signs the user out.
+- `GET/POST /forgot-password` requests a password-reset link.
+- `GET/POST /reset-password` completes a password reset.
+- `GET/POST /account/password` changes the current password.
+- `POST /account/email-verification` requests a verification link.
+- `GET /verify-email` consumes a verification link in the example application.
+- `GET /account` displays the current user and verification state.
+
+The JSON AuthLoom router remains available under `/auth`.
 
 ## CSRF Responsibility
 
