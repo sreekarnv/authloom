@@ -15,6 +15,7 @@ class UserResDto(BaseModel):
     id: str
     name: str
     email: EmailStr
+    email_verified_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -73,6 +74,10 @@ class SessionResDto(BaseModel):
 
 
 class RequestPasswordResetHttpReqDto(BaseModel):
+    email: EmailStr
+
+
+class RequestEmailVerificationHttpReqDto(BaseModel):
     email: EmailStr
 
 

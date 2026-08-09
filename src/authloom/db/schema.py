@@ -18,6 +18,7 @@ class User(Base):
     name = mapped_column(VARCHAR, index=True, nullable=False)
     email = mapped_column(VARCHAR, unique=True, index=True, nullable=False)
     password = mapped_column(VARCHAR, deferred=True, nullable=False)
+    email_verified_at = mapped_column(UTCDateTime(), nullable=True)
     created_at = mapped_column(
         UTCDateTime(), nullable=False, default=utc_now, server_default=func.now()
     )
@@ -29,6 +30,9 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     reset_password_tokens: Mapped[list["ResetPasswordToken"]] = relationship(
+        back_populates="user", cascade="all"
+    )
+    email_verification_tokens: Mapped[list["EmailVerificationToken"]] = relationship(
         back_populates="user", cascade="all"
     )
 
@@ -65,3 +69,22 @@ class ResetPasswordToken(Base):
     used_at = mapped_column(UTCDateTime(), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="reset_password_tokens")
+
+
+class EmailVerificationToken(Base):
+    __tablename__ = "authloom_email_verification_tokens"
+
+    id = mapped_column(VARCHAR, primary_key=True, default=CUID_GENERATOR)
+    token_hash = mapped_column(VARCHAR(64), unique=True, index=True, nullable=False)
+    user_id = mapped_column(
+        ForeignKey("authloom_users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    created_at = mapped_column(
+        UTCDateTime(), nullable=False, default=utc_now, server_default=func.now()
+    )
+    expires_at = mapped_column(UTCDateTime(), nullable=False)
+    used_at = mapped_column(UTCDateTime(), nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="email_verification_tokens")

@@ -57,6 +57,7 @@ class AuthLoomPasswordConfig(BaseModel):
 
 class AuthLoomHooks(BaseModel):
     on_request_password_reset: Callable[[str, str], None] | None = None
+    on_request_email_verification: Callable[[str, str], None] | None = None
 
 
 class AuthLoomConfig(BaseSettings):
