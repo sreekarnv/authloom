@@ -9,6 +9,7 @@ AuthLoom configuration is passed through `AuthLoomConfig`.
 | `session_factory` | Required async SQLAlchemy session factory. |
 | `cookie_session` | Cookie/session settings. |
 | `password_config` | Password length policy. |
+| `hooks` | Consumer callbacks for password-reset and email-verification tokens. |
 
 ## Cookie Settings
 
@@ -28,3 +29,32 @@ AuthLoom configuration is passed through `AuthLoomConfig`.
 | --- | --- | --- |
 | `min_length` | `15` | Cannot be less than `15` and cannot exceed `max_length`. |
 | `max_length` | `64` | Cannot be less than `64` or greater than `128`. |
+
+## Security Flow Hooks
+
+Hooks receive the destination email address and the raw, one-time token after
+AuthLoom has persisted its hash. AuthLoom does not send email.
+
+```python
+from authloom import AuthLoom
+from authloom.settings import AuthLoomConfig, AuthLoomHooks
+
+auth = AuthLoom(
+    config=AuthLoomConfig(
+        session_factory=AsyncSessionLocal,
+        hooks=AuthLoomHooks(
+            on_request_password_reset=send_password_reset_email,
+            on_request_email_verification=send_email_verification_email,
+        ),
+    )
+)
+```
+
+The callback type is synchronous:
+
+```python
+Callable[[str, str], None]
+```
+
+Consumers are responsible for constructing links, sending messages, and
+preventing raw tokens from appearing in logs or persistent application data.

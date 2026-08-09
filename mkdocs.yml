@@ -28,6 +28,7 @@ nav:
   - Home: index.md
   - Consumer Integration: consumer-integration.md
   - Configuration: configuration.md
+  - Account Security Flows: account-security-flows.md
   - Database And Migrations: database-and-migrations.md
   - Security: security-model.md
 
