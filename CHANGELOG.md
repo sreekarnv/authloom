@@ -2,6 +2,23 @@
 
 All notable changes to AuthLoom will be documented in this file.
 
+## 0.1.0a4 — 2026-08-09
+
+### Added
+
+- Session invalidation with optional current-session preservation.
+- Password-reset flow.
+- Authenticated password changes.
+- Email-verification token creation.
+- Consumer hooks for password-reset and email-verification delivery.
+- Updated examples/credentials_auth_postgres example with Jinja2 templates and MailHog.
+
+### Security
+
+- Single-use hashed password-reset and email-verification tokens.
+- Atomic password-reset token consumption.
+- Session invalidation support after password changes.
+
 ## 0.1.0a3 — 2026-08-04
 
 ### Added
