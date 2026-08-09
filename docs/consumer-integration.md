@@ -173,8 +173,9 @@ app.include_router(
 )
 ```
 
-The dependency runs before signup, signin, and signout. It does not apply to
-`GET /auth/me`. Add the same dependency to your own mutation routes.
+The dependency runs before every built-in mutation route. It does not apply to
+read-only routes such as `GET /auth/me`. Add the same dependency to your own
+mutation routes.
 
 You may use [`fastapi-csrf-protect`](https://pypi.org/project/fastapi-csrf-protect/),
 another library, or your own implementation. Configure CORS separately.
@@ -191,6 +192,10 @@ The router is mounted at `/auth` and provides:
 | `POST` | `/auth/signin` | Verify credentials, create a session, and set the session cookie. |
 | `POST` | `/auth/signout` | Revoke the current session and delete the session cookie when present. |
 | `GET` | `/auth/me` | Return the current authenticated user. |
+| `POST` | `/auth/request-password-reset` | Create a password-reset token and invoke the consumer hook when configured. |
+| `POST` | `/auth/password-reset` | Consume a valid reset token and update the password. |
+| `POST` | `/auth/password-change` | Verify the current password, change the password, and revoke other sessions. |
+| `POST` | `/auth/request-email-verification` | Create an email-verification token and invoke the consumer hook when configured. |
 
 ## Use Required Authentication
 
@@ -248,9 +253,17 @@ Expired and revoked sessions are deleted. AuthLoom provides the cleanup operatio
 
 Revoked sessions are deleted immediately by this cleanup method. If your application needs security auditing, record the relevant signout or revocation events elsewhere before deleting session rows.
 
+## Account Security Flows
+
+See [Account Security Flows](account-security-flows.md) for password reset,
+password change, email verification, session invalidation, consumer hooks, and
+browser security requirements.
+
 ## Combine Metadata
 
-AuthLoom owns the `authloom_users` and `authloom_sessions` SQLAlchemy models. Your application still owns Alembic and migration files.
+AuthLoom owns the `authloom_users`, `authloom_sessions`,
+`authloom_reset_password_tokens`, and `authloom_email_verification_tokens`
+SQLAlchemy models. Your application still owns Alembic and migration files.
 
 If your application has its own declarative base:
 
@@ -341,7 +354,7 @@ Set `domain` only when you need the cookie shared across a specific domain or su
 - Passing a synchronous `sessionmaker` instead of `async_sessionmaker`.
 - Forgetting to install the matching async database driver, such as `aiosqlite` or `asyncpg`.
 - Creating AuthLoom tables with `create_all()` locally and then forgetting to add real Alembic migrations.
-- Omitting `authloom.db.metadata` from Alembic `target_metadata`, which prevents autogenerate from seeing AuthLoom tables.
+- Omitting `authloom.db.metadata` from Alembic `target_metadata`, which prevents autogenerate from seeing AuthLoom tables and security-flow tables.
 - Setting `secure=True` during plain HTTP local development, which prevents browsers from sending the cookie.
 - Leaving `secure=False` in HTTPS production.
 - Using `samesite="none"` without `secure=True`, which AuthLoom rejects during configuration validation.
@@ -350,13 +363,17 @@ Set `domain` only when you need the cookie shared across a specific domain or su
 
 ## Current Limitations
 
-AuthLoom provides credentials signup/signin, cookie-backed database sessions, required and optional current-user dependencies, password hashing, email normalization, session expiry, and signout revocation.
+AuthLoom provides credentials signup/signin, cookie-backed database sessions,
+required and optional current-user dependencies, password hashing, email
+normalization, session expiry, signout revocation, session invalidation,
+password reset, password change, and email-verification token creation.
 
 It does not currently provide:
 
 - Rate limiting or brute-force protection.
-- Email verification.
-- Password reset or password change flows.
+- Email-verification token consumption in core AuthLoom. The PostgreSQL example
+  implements completion in application-owned code.
+- Email delivery. Consumers own email providers and delivery hooks.
 - Multi-factor authentication.
 - OAuth or social login.
 - JWT access or refresh tokens.

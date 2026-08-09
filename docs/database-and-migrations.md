@@ -1,12 +1,15 @@
 # Database And Migrations
 
-AuthLoom uses async SQLAlchemy models for users and sessions, but the consuming application owns database setup and schema migrations.
+AuthLoom uses async SQLAlchemy models for users, sessions, password-reset
+tokens, and email-verification tokens, but the consuming application owns
+database setup and schema migrations.
 
 ## Responsibilities
 
 AuthLoom provides:
 
-- SQLAlchemy models for AuthLoom users and sessions.
+- SQLAlchemy models for AuthLoom users, sessions, password-reset tokens, and
+  email-verification tokens.
 - SQLAlchemy metadata exposed as `authloom.db.metadata`.
 - Runtime access through an application-provided `async_sessionmaker[AsyncSession]`.
 
@@ -53,6 +56,10 @@ target_metadata = [authloom_metadata, Base.metadata]
 ```
 
 This lets Alembic see both AuthLoom tables and application-owned tables when generating migrations.
+
+The AuthLoom user model includes nullable `email_verified_at`. It remains
+`NULL` until the application completes email verification, then records the
+verification timestamp. Token tables include expiry and single-use state.
 
 ## Production Migrations
 
