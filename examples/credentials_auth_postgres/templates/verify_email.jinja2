@@ -1,0 +1,11 @@
+{% extends "base.jinja2" %}
+{% block title %}Email verification{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-12 col-md-8">
+<h1 class="mb-4">Email verification</h1>
+<div class="alert alert-info" role="alert">{{ message }}</div>
+<a class="btn btn-primary" href="/account">Return to your account</a>
+</div>
+</div>
+{% endblock %}
