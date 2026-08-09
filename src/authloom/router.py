@@ -7,6 +7,7 @@ from fastapi.params import Depends as DependsParam
 from authloom.db.schema import User
 from authloom.dtos import (
     AuthHttpResDto,
+    ChangePasswordReqDto,
     PasswordResetHttpReqDto,
     RequestPasswordResetHttpReqDto,
     SigninHttpReqDto,
@@ -172,5 +173,39 @@ def create_auth_router(
             ) from exc
 
         return {"message": "password reset successful"}
+
+    @router.post(
+        "/password-change",
+        status_code=status.HTTP_200_OK,
+        dependencies=unsafe_route_dependencies,
+    )
+    async def password_change(
+        user: Annotated[User, Depends(auth.require_current_user)],
+        input: ChangePasswordReqDto,
+    ):
+        try:
+            updated = await auth.change_password(
+                user_id=user.id,
+                current_password=input.current_password,
+                new_password=input.new_password,
+            )
+        except InvalidCredentialsException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid credentials",
+            ) from exc
+        except PasswordPolicyException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid credentials",
+            ) from exc
+
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not update your password",
+            )
+
+        return {"message": "Password updated successfully"}
 
     return router

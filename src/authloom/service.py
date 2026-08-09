@@ -54,6 +54,25 @@ class AuthLoom:
         self.dummy_password_hash = self.password_hasher.hash(secrets.token_urlsafe(32))
         self.session_factory = config.session_factory
 
+    def _validate_password_policy(self, password: str) -> None:
+        if len(password) < self.config.password_config.min_length:
+            raise PasswordPolicyException(
+                code=PasswordPolicyCode.TOO_SHORT,
+                message=(
+                    f"Password must contains at least "
+                    f"{self.config.password_config.min_length} characters."
+                ),
+            )
+
+        if len(password) > self.config.password_config.max_length:
+            raise PasswordPolicyException(
+                code=PasswordPolicyCode.TOO_LONG,
+                message=(
+                    f"Password must contains at most "
+                    f"{self.config.password_config.max_length} characters."
+                ),
+            )
+
     async def require_current_user(self, request: Request) -> User:
         token_raw = request.cookies.get(self.config.cookie_session.cookie_name)
         if not token_raw:
@@ -81,24 +100,7 @@ class AuthLoom:
     async def signup(
         self, input: SignupSrvInputDto
     ) -> tuple[UserResDto, SessionResDto]:
-        if len(input.password) < self.config.password_config.min_length:
-            raise PasswordPolicyException(
-                code=PasswordPolicyCode.TOO_SHORT,
-                message=(
-                    f"Password must contains at least "
-                    f"{self.config.password_config.min_length} characters."
-                ),
-            )
-
-        if len(input.password) > self.config.password_config.max_length:
-            raise PasswordPolicyException(
-                code=PasswordPolicyCode.TOO_LONG,
-                message=(
-                    f"Password must contains at most "
-                    f"{self.config.password_config.max_length} characters."
-                ),
-            )
-
+        self._validate_password_policy(input.password)
         email_normalizer = email_normalize.Normalizer()
         normalized_result = await email_normalizer.normalize(input.email)
 
@@ -326,23 +328,7 @@ class AuthLoom:
     async def verify_token_reset_password(
         self, token_raw: str, new_password: str
     ) -> None:
-        if len(new_password) < self.config.password_config.min_length:
-            raise PasswordPolicyException(
-                code=PasswordPolicyCode.TOO_SHORT,
-                message=(
-                    f"Password must contains at least "
-                    f"{self.config.password_config.min_length} characters."
-                ),
-            )
-
-        if len(new_password) > self.config.password_config.max_length:
-            raise PasswordPolicyException(
-                code=PasswordPolicyCode.TOO_LONG,
-                message=(
-                    f"Password must contains at most "
-                    f"{self.config.password_config.max_length} characters."
-                ),
-            )
+        self._validate_password_policy(new_password)
 
         token_hash = hash_password_reset_token(token_raw=token_raw)
         now = utc_now()
@@ -370,3 +356,46 @@ class AuthLoom:
             )
 
             await session.commit()
+
+    async def change_password(
+        self,
+        *,
+        user_id: str,
+        current_password: str,
+        new_password: str,
+        preserve_session_token_raw: str | None = None,
+    ) -> UserResDto | None:
+        self._validate_password_policy(new_password)
+
+        async with self.session_factory() as session:
+            select_query = await session.execute(
+                select(User)
+                .options(undefer(User.password))
+                .where(User.id == user_id)
+                .limit(1)
+            )
+            user = select_query.scalar_one_or_none()
+
+            if not user:
+                try:
+                    self.password_hasher.verify(self.dummy_password_hash, new_password)
+                except VerificationError:
+                    pass
+                raise InvalidCredentialsException() from None
+
+            try:
+                self.password_hasher.verify(user.password, current_password)
+            except (InvalidHashError, VerificationError):
+                raise InvalidCredentialsException() from None
+
+            hashed_password = self.password_hasher.hash(new_password)
+            update_query = await session.execute(
+                update(User)
+                .where(User.id == user_id)
+                .values(password=hashed_password)
+                .returning(User)
+            )
+            user = update_query.scalar_one_or_none()
+            await session.commit()
+
+        return None if not user else UserResDto.model_validate(user)

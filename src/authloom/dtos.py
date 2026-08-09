@@ -91,3 +91,21 @@ class PasswordResetHttpReqDto(BaseModel):
     @classmethod
     def normalize_password(cls, v: str) -> str:
         return unicodedata.normalize("NFC", v)
+
+
+class ChangePasswordReqDto(BaseModel):
+    current_password: str
+    new_password: str
+    new_password_confirm: str
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> Self:
+        if self.new_password != self.new_password_confirm:
+            raise ValueError("passwords do not match")
+
+        return self
+
+    @field_validator("current_password", "new_password", "new_password_confirm")
+    @classmethod
+    def normalize_password(cls, v: str) -> str:
+        return unicodedata.normalize("NFC", v)
