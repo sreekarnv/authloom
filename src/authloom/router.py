@@ -180,6 +180,7 @@ def create_auth_router(
         dependencies=unsafe_route_dependencies,
     )
     async def password_change(
+        request: Request,
         user: Annotated[User, Depends(auth.require_current_user)],
         input: ChangePasswordReqDto,
     ):
@@ -188,6 +189,9 @@ def create_auth_router(
                 user_id=user.id,
                 current_password=input.current_password,
                 new_password=input.new_password,
+                preserve_session_token_raw=request.cookies.get(
+                    auth.config.cookie_session.cookie_name
+                ),
             )
         except InvalidCredentialsException as exc:
             raise HTTPException(
@@ -196,8 +200,11 @@ def create_auth_router(
             ) from exc
         except PasswordPolicyException as exc:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="invalid credentials",
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    "code": exc.code,
+                    "message": exc.message,
+                },
             ) from exc
 
         if not updated:

@@ -396,6 +396,21 @@ class AuthLoom:
                 .returning(User)
             )
             user = update_query.scalar_one_or_none()
+
+            conditions = [
+                Session.user_id == user_id,
+                Session.revoked_at.is_(None),
+                Session.expires_at > utc_now(),
+            ]
+
+            if preserve_session_token_raw is not None:
+                conditions.append(
+                    Session.token_hash != hash_session_token(preserve_session_token_raw)
+                )
+
+            await session.execute(
+                update(Session).where(and_(*conditions)).values(revoked_at=utc_now())
+            )
             await session.commit()
 
         return None if not user else UserResDto.model_validate(user)
