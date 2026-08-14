@@ -478,7 +478,7 @@ class AuthLoom:
                 user_update = await session.execute(
                     update(User)
                     .where(User.id == ev_update_user_id)
-                    .values(email_verified_at = now)
+                    .values(email_verified_at=now)
                     .returning(User)
                 )
 
@@ -494,6 +494,5 @@ class AuthLoom:
                 await session.rollback()
 
                 raise InvalidEmailVerificationTokenException() from None
-
 
         return data
