@@ -6,11 +6,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from authloom import AuthLoom, AuthLoomConfig, create_auth_router
-from authloom.db.schema import EmailVerificationToken
+from authloom import AuthLoom, AuthLoomConfig
+from authloom.db.schema import EmailVerificationToken, User
 from authloom.db.utils.time import utc_now
-from authloom.service import hash_email_verification_token
-from authloom.settings import AuthLoomHooks
 
 
 def _session_maker(async_engine: AsyncEngine):
@@ -35,93 +33,114 @@ async def _signup(client: AsyncClient, email: str):
 
 
 @pytest.mark.asyncio
-async def test_request_email_verification_persists_hashed_token(
+async def test_email_verification_with_valid_token_marks_user_verified_and_token_used(
     app: FastAPI,
     async_engine: AsyncEngine,
 ):
     transport = ASGITransport(app=app)
     session_maker = _session_maker(async_engine)
     auth = AuthLoom(config=AuthLoomConfig(session_factory=session_maker))
-    email = "test_request_email_verification@example.com"
+    email = "test_email_verification_with_valid_token@example.com"
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         signup_response = await _signup(client, email)
-
-    token_raw = await auth.request_email_verification(email=email)
+        token_raw = await auth.request_email_verification(email=email)
+        verification_response = await client.get(
+            f"/auth/email-verification?token={token_raw}"
+        )
 
     async with session_maker() as session:
-        result = await session.execute(select(EmailVerificationToken))
-        verification_token = result.scalar_one()
+        token_result = await session.execute(select(EmailVerificationToken))
+        verification_token = token_result.scalar_one()
+        user_result = await session.execute(select(User).where(User.email == email))
+        user = user_result.scalar_one()
 
     assert signup_response.status_code == status.HTTP_201_CREATED
     assert token_raw is not None
-    assert verification_token.token_hash == hash_email_verification_token(token_raw)
-    assert verification_token.token_hash != token_raw
-    assert verification_token.user_id is not None
-    assert verification_token.created_at is not None
-    assert verification_token.expires_at > utc_now()
-    assert verification_token.expires_at < utc_now() + timedelta(minutes=16)
-    assert verification_token.used_at is None
+    assert verification_response.status_code == status.HTTP_200_OK
+    assert verification_token.used_at is not None
+    assert user.email_verified_at is not None
 
 
 @pytest.mark.asyncio
-async def test_request_email_verification_unknown_email_returns_none(
+async def test_email_verification_rejects_used_token(
+    app: FastAPI,
     async_engine: AsyncEngine,
 ):
+    transport = ASGITransport(app=app)
     session_maker = _session_maker(async_engine)
     auth = AuthLoom(config=AuthLoomConfig(session_factory=session_maker))
+    email = "test_email_verification_rejects_used_token@example.com"
 
-    token_raw = await auth.request_email_verification(email="unknown@example.com")
-
-    async with session_maker() as session:
-        result = await session.execute(select(EmailVerificationToken))
-
-    assert token_raw is None
-    assert result.scalars().all() == []
-
-
-@pytest.mark.asyncio
-async def test_request_email_verification_exposes_raw_token_to_hook(
-    async_engine: AsyncEngine,
-):
-    session_maker = _session_maker(async_engine)
-    delivered: list[tuple[str, str]] = []
-
-    def on_request_email_verification(email: str, token: str) -> None:
-        delivered.append((email, token))
-
-    auth = AuthLoom(
-        config=AuthLoomConfig(
-            session_factory=session_maker,
-            hooks=AuthLoomHooks(
-                on_request_email_verification=on_request_email_verification
-            ),
-        )
-    )
-    app = FastAPI()
-    app.include_router(create_auth_router(auth))
-    email = "test_email_verification_hook@example.com"
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         signup_response = await _signup(client, email)
-        request_response = await client.post(
-            "/auth/request-email-verification", json={"email": email}
+        token_raw = await auth.request_email_verification(email=email)
+        first_response = await client.get(f"/auth/email-verification?token={token_raw}")
+        second_response = await client.get(
+            f"/auth/email-verification?token={token_raw}"
         )
 
     assert signup_response.status_code == status.HTTP_201_CREATED
-    assert request_response.status_code == status.HTTP_200_OK
-    assert request_response.json() == {
-        "message": "email verification sent to your email"
-    }
-    assert len(delivered) == 1
-    assert delivered[0][0] == email
+    assert first_response.status_code == status.HTTP_200_OK
+    assert second_response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.asyncio
+async def test_email_verification_rejects_unknown_token_without_modifying_user(
+    app: FastAPI,
+    async_engine: AsyncEngine,
+):
+    transport = ASGITransport(app=app)
+    session_maker = _session_maker(async_engine)
+    email = "test_email_verification_rejects_unknown_token@example.com"
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        signup_response = await _signup(client, email)
+        verification_response = await client.get(
+            "/auth/email-verification?token=unknown-token"
+        )
 
     async with session_maker() as session:
-        result = await session.execute(select(EmailVerificationToken))
-        verification_token = result.scalar_one()
+        user_result = await session.execute(select(User).where(User.email == email))
+        user = user_result.scalar_one()
 
-    assert verification_token.token_hash == hash_email_verification_token(
-        delivered[0][1]
-    )
+    assert signup_response.status_code == status.HTTP_201_CREATED
+    assert verification_response.status_code == status.HTTP_400_BAD_REQUEST
+    assert user.email_verified_at is None
+
+
+@pytest.mark.asyncio
+async def test_email_verification_rejects_expired_token_without_modifying_user(
+    app: FastAPI,
+    async_engine: AsyncEngine,
+):
+    transport = ASGITransport(app=app)
+    session_maker = _session_maker(async_engine)
+    auth = AuthLoom(config=AuthLoomConfig(session_factory=session_maker))
+    email = "test_email_verification_rejects_expired_token@example.com"
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        signup_response = await _signup(client, email)
+        token_raw = await auth.request_email_verification(email=email)
+
+    async with session_maker() as session:
+        token_result = await session.execute(select(EmailVerificationToken))
+        verification_token = token_result.scalar_one()
+        verification_token.expires_at = utc_now() - timedelta(microseconds=1)
+        await session.commit()
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        verification_response = await client.get(
+            f"/auth/email-verification?token={token_raw}"
+        )
+
+    async with session_maker() as session:
+        token_result = await session.execute(select(EmailVerificationToken))
+        verification_token = token_result.scalar_one()
+        user_result = await session.execute(select(User).where(User.email == email))
+        user = user_result.scalar_one()
+
+    assert signup_response.status_code == status.HTTP_201_CREATED
+    assert verification_response.status_code == status.HTTP_400_BAD_REQUEST
+    assert verification_token.used_at is None
+    assert user.email_verified_at is None

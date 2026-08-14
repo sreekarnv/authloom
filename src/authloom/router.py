@@ -19,6 +19,7 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    InvalidEmailVerificationTokenException,
     InvalidPasswordResetTokenException,
     PasswordPolicyException,
     SessionCreationException,
@@ -161,6 +162,22 @@ def create_auth_router(
             auth.config.hooks.on_request_email_verification(input.email, token)
 
         return {"message": "email verification sent to your email"}
+
+    @router.get(
+        "/email-verification",
+        status_code=status.HTTP_200_OK,
+        dependencies=unsafe_route_dependencies,
+    )
+    async def verify_email(token: str):
+        try:
+            await auth.verify_email(token_raw=token)
+        except InvalidEmailVerificationTokenException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="could not verify your email",
+            ) from exc
+
+        return {"message": "verified email successfully"}
 
     @router.post(
         "/password-reset",

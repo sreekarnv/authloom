@@ -20,6 +20,7 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    InvalidEmailVerificationTokenException,
     InvalidPasswordResetTokenException,
     PasswordPolicyCode,
     PasswordPolicyException,
@@ -451,3 +452,47 @@ class AuthLoom:
             await session.commit()
 
         return None if not user else UserResDto.model_validate(user)
+
+    async def verify_email(self, *, token_raw: str) -> UserResDto | None:
+        token_hash = hash_email_verification_token(token_raw=token_raw)
+        now = utc_now()
+        data = None
+
+        async with self.session_factory() as session:
+            try:
+                email_verification_update = await session.execute(
+                    update(EmailVerificationToken)
+                    .where(
+                        EmailVerificationToken.token_hash == token_hash,
+                        EmailVerificationToken.used_at.is_(None),
+                        EmailVerificationToken.expires_at > now,
+                    )
+                    .values(used_at=now)
+                    .returning(EmailVerificationToken.user_id)
+                )
+                ev_update_user_id = email_verification_update.scalar_one_or_none()
+
+                if not ev_update_user_id:
+                    raise InvalidEmailVerificationTokenException() from None
+
+                user_update = await session.execute(
+                    update(User)
+                    .where(User.id == ev_update_user_id)
+                    .values(email_verified_at=now)
+                    .returning(User)
+                )
+
+                user_update_result = user_update.scalar_one_or_none()
+
+                if not user_update_result:
+                    raise InvalidEmailVerificationTokenException() from None
+
+                await session.commit()
+
+                data = UserResDto.model_validate(user_update_result)
+            except IntegrityError:
+                await session.rollback()
+
+                raise InvalidEmailVerificationTokenException() from None
+
+        return data
