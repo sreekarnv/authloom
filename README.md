@@ -2,7 +2,7 @@
 
 AuthLoom is a Python 3.12 authentication library for FastAPI applications.
 
-It currently provides email/password signup and signin, cookie-backed database sessions, required and optional current-user dependencies, generic dependencies for built-in mutation routes, Argon2 password hashing, normalized email handling, hashed session tokens, expiry, and signout revocation.
+It currently provides email/password signup and signin, cookie-backed database sessions, required and optional current-user dependencies, generic dependencies for built-in mutation routes, Argon2 password hashing, normalized email handling, hashed session tokens, expiry, signout revocation, password reset, password change, and email verification.
 
 AuthLoom is pre-release software. APIs and database integration details may change before the first stable release.
 
@@ -76,6 +76,16 @@ async def optional_route(
 | `POST` | `/auth/signin` | Verify credentials, create a session, and set the session cookie. |
 | `POST` | `/auth/signout` | Revoke the current session and delete the session cookie when present. |
 | `GET` | `/auth/me` | Return the current authenticated user. |
+| `POST` | `/auth/request-password-reset` | Create a password-reset token and invoke the consumer hook when configured. |
+| `POST` | `/auth/password-reset?token=<token_raw>` | Consume a valid reset token and update the password. |
+| `POST` | `/auth/password-change` | Verify the current password, change the password, and revoke other sessions. |
+| `POST` | `/auth/request-email-verification` | Create an email-verification token and invoke the consumer hook when configured. |
+| `GET` | `/auth/email-verification?token=<token_raw>` | Consume a valid verification token and mark the user's email verified. |
+
+Email delivery is consumer-owned. Password-reset and email-verification request
+hooks receive raw one-time tokens so the application can construct and send
+links. The email-verification completion route is a clickable bearer-token link;
+use HTTPS and avoid logging full verification URLs.
 
 ## Configuration
 
@@ -168,6 +178,9 @@ AuthLoom currently provides:
 - Session expiry based on the configured cookie/session lifetime.
 - Session revocation during signout.
 - Manual cleanup of expired or revoked sessions.
+- Password-reset token creation and single-use password reset.
+- Password-change current-password verification and session invalidation.
+- Email-verification token creation and single-use completion.
 - `HttpOnly` cookie support.
 - Generic invalid-credential responses for signin failures.
 - Argon2 verification for both unknown-email and wrong-password signin failures.
@@ -202,8 +215,7 @@ See [`docs/security-model.md`](docs/security-model.md) for more detail.
 AuthLoom does not currently provide:
 
 - Rate limiting or brute-force protection.
-- Email verification.
-- Password reset or password change flows.
+- Email delivery. Consumers own email providers and delivery hooks.
 - Multi-factor authentication.
 - OAuth or social login.
 - JWT access or refresh tokens.
@@ -215,14 +227,16 @@ AuthLoom does not currently provide:
 
 - Consumer integration guide: [`docs/consumer-integration.md`](docs/consumer-integration.md)
 - Configuration reference: [`docs/configuration.md`](docs/configuration.md)
+- Account security flows: [`docs/account-security-flows.md`](docs/account-security-flows.md)
 - Database and migrations: [`docs/database-and-migrations.md`](docs/database-and-migrations.md)
 - Security model: [`docs/security-model.md`](docs/security-model.md)
 
 ## Example Applications
 
-See `examples/credentials_auth_basic/` for a SQLite FastAPI example.
-
-See `examples/credentials_auth_postgres/` for a PostgreSQL FastAPI example.
+See `examples/credentials_auth/` for a FastAPI credentials-auth reference
+implementation that can run with SQLite by default or PostgreSQL via
+`DATABASE_URL` and Docker Compose. It is a reference implementation, not a
+production application template.
 
 ## Development
 

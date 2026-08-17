@@ -58,8 +58,9 @@ target_metadata = [authloom_metadata, Base.metadata]
 This lets Alembic see both AuthLoom tables and application-owned tables when generating migrations.
 
 The AuthLoom user model includes nullable `email_verified_at`. It remains
-`NULL` until the application completes email verification, then records the
-verification timestamp. Token tables include expiry and single-use state.
+`NULL` until AuthLoom completes email verification through `auth.verify_email(...)`
+or `GET /auth/email-verification?token=...`, then records the verification
+timestamp. Token tables include expiry and single-use state.
 
 ## Production Migrations
 
@@ -69,6 +70,6 @@ Use Alembic or the application's normal migration workflow for production schema
 
 ## SQLite And PostgreSQL
 
-The repository includes a SQLite example at [`examples/credentials_auth_basic/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_basic). It demonstrates local development setup, app-owned Alembic migrations, and combining AuthLoom metadata with application metadata.
+The repository includes a unified FastAPI credentials-auth reference implementation at [`examples/credentials_auth/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth). It demonstrates local development setup, app-owned Alembic migrations, and combining AuthLoom metadata with application metadata.
 
-The repository also includes a PostgreSQL example at [`examples/credentials_auth_postgres/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres). It demonstrates using `postgresql+asyncpg://...`, async Alembic migrations, and a Docker Compose PostgreSQL database for local development.
+The example runs with SQLite by default and can use PostgreSQL by setting `DATABASE_URL` to a `postgresql+asyncpg://...` URL and starting the Docker Compose PostgreSQL database. It is a reference implementation, not a production application template.

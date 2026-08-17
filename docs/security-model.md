@@ -19,7 +19,8 @@ AuthLoom currently provides:
   current session.
 - Password-reset token creation and single-use password reset.
 - Password-change current-password verification and session invalidation.
-- Email-verification token creation and `User.email_verified_at` state.
+- Email-verification token creation and single-use completion that sets
+  `User.email_verified_at`.
 - `HttpOnly` cookie support.
 - Generic invalid-credential responses for signin failures.
 
@@ -32,9 +33,13 @@ configured consumer hook and stores only a SHA-256 hash in the database.
 Both token types include creation and expiry timestamps and a nullable
 `used_at`. A token must be unused and unexpired to be accepted. A successful
 password reset marks its token used in the same transaction as the password
-update. Core AuthLoom currently creates email-verification tokens but does not
-provide their consume operation; the PostgreSQL example completes that flow in
-application-owned code and marks both `used_at` and `email_verified_at`.
+update. A successful email verification marks its token used in the same
+transaction as the `User.email_verified_at` update.
+
+Verification links use the raw token as bearer authorization, for example
+`/auth/email-verification?token=<token_raw>`. Keep these links HTTPS-only and
+avoid logging them. AuthLoom stores only token hashes, uses short expirations,
+and rejects invalid, expired, or already-used tokens with a generic failure.
 
 Password-reset requests for unknown emails return the same generic response as
 known emails. This avoids disclosing whether an account exists through the
@@ -56,10 +61,11 @@ required dependency or an AuthLoom security guarantee.
 
 Consumers can attach their CSRF dependency to AuthLoom's built-in unsafe routes
 through `create_auth_router(..., unsafe_route_dependencies=...)`. This includes
-signup, signin, signout, password reset, password change, and verification-token
-request routes. Application-owned mutation routes must attach the same
-consumer-owned protection separately. CORS and trusted-origin configuration are
-separate from CSRF protection.
+signup, signin, signout, password reset, password change, and token-request
+routes. The email-verification completion route is a clickable bearer-token link
+and should not require a browser CSRF token. Application-owned mutation routes
+must attach the same consumer-owned protection separately. CORS and
+trusted-origin configuration are separate from CSRF protection.
 
 The `fastapi-csrf-protect` integration in the example applications is optional
 example code and is not a dependency of the AuthLoom package.
@@ -104,8 +110,6 @@ The consuming application remains responsible for deployment and product-specifi
 AuthLoom does not currently provide:
 
 - Rate limiting.
-- Email-verification completion in core AuthLoom. The PostgreSQL example owns
-  its completion route.
 - Multi-factor authentication.
 - OAuth or social login.
 - JWT access or refresh tokens.

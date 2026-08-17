@@ -2,7 +2,7 @@
 
 This guide shows how to add AuthLoom to an existing FastAPI application after installing the published package from PyPI.
 
-It does not create another example application. For complete reference implementations, see the SQLite example in [`examples/credentials_auth_basic/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_basic) and the PostgreSQL example in [`examples/credentials_auth_postgres/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres).
+It does not create another example application. For a complete FastAPI credentials-auth reference implementation that can run with SQLite by default or PostgreSQL via `DATABASE_URL` and Docker Compose, see [`examples/credentials_auth/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth). It is a reference implementation, not a production application template.
 
 ## Install AuthLoom
 
@@ -173,9 +173,10 @@ app.include_router(
 )
 ```
 
-The dependency runs before every built-in mutation route. It does not apply to
-read-only routes such as `GET /auth/me`. Add the same dependency to your own
-mutation routes.
+The dependency runs before AuthLoom's cookie-authenticated mutation routes and
+token-request routes. It does not apply to read-only routes such as
+`GET /auth/me` or to the clickable bearer-token email-verification completion
+route. Add the same dependency to your own mutation routes.
 
 You may use [`fastapi-csrf-protect`](https://pypi.org/project/fastapi-csrf-protect/),
 another library, or your own implementation. Configure CORS separately.
@@ -196,6 +197,13 @@ The router is mounted at `/auth` and provides:
 | `POST` | `/auth/password-reset` | Consume a valid reset token and update the password. |
 | `POST` | `/auth/password-change` | Verify the current password, change the password, and revoke other sessions. |
 | `POST` | `/auth/request-email-verification` | Create an email-verification token and invoke the consumer hook when configured. |
+| `GET` | `/auth/email-verification?token=<token_raw>` | Consume a valid verification token and mark the user's email verified. |
+
+Email verification links are intended to be opened directly from email. Treat the
+query token as bearer authorization: use HTTPS, avoid logging full URLs, and let
+AuthLoom reject invalid, expired, or reused tokens generically. If you attach
+CSRF dependencies to unsafe routes, do not require a CSRF token for this
+clickable verification-link route.
 
 ## Use Required Authentication
 
@@ -312,7 +320,10 @@ alembic revision --autogenerate -m "add authloom tables"
 alembic upgrade head
 ```
 
-Review the generated migration before applying it. It should include AuthLoom's `authloom_users` and `authloom_sessions` tables, plus any application tables that are new or changed.
+Review the generated migration before applying it. It should include AuthLoom's
+`authloom_users`, `authloom_sessions`, `authloom_reset_password_tokens`, and
+`authloom_email_verification_tokens` tables, plus any application tables that
+are new or changed.
 
 Do not rely on `metadata.create_all()` for production. It can be useful for quick local experiments, but it is not a reviewed, ordered, repeatable migration history.
 
@@ -366,13 +377,11 @@ Set `domain` only when you need the cookie shared across a specific domain or su
 AuthLoom provides credentials signup/signin, cookie-backed database sessions,
 required and optional current-user dependencies, password hashing, email
 normalization, session expiry, signout revocation, session invalidation,
-password reset, password change, and email-verification token creation.
+password reset, password change, and email verification request and completion.
 
 It does not currently provide:
 
 - Rate limiting or brute-force protection.
-- Email-verification token consumption in core AuthLoom. The PostgreSQL example
-  implements completion in application-owned code.
 - Email delivery. Consumers own email providers and delivery hooks.
 - Multi-factor authentication.
 - OAuth or social login.
@@ -384,7 +393,8 @@ It does not currently provide:
 
 ## Reference Implementations
 
-- SQLite: [`examples/credentials_auth_basic/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_basic)
-- PostgreSQL: [`examples/credentials_auth_postgres/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres)
+- FastAPI credentials-auth reference implementation: [`examples/credentials_auth/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth)
+  runs with SQLite by default or PostgreSQL via `DATABASE_URL` and Docker
+  Compose. It is not a production application template.
 - Migration details: [Database And Migrations](database-and-migrations.md)
 - Cookie and security details: [Security](security-model.md)

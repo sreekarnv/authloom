@@ -5,8 +5,8 @@ AuthLoom is a Python 3.12 authentication library for FastAPI applications.
 It currently provides email/password signup and signin, cookie-backed database
 sessions, required and optional current-user dependencies, Argon2 password
 hashing, normalized email handling, hashed session tokens, expiry, signout
-revocation, password reset, password change, and email-verification token
-creation.
+revocation, password reset, password change, and email verification request and
+completion.
 
 AuthLoom is pre-release software. APIs and database integration details may change before the first stable release.
 
@@ -38,5 +38,6 @@ If you installed AuthLoom from PyPI and want to wire it into an application, sta
 
 ## Reference Implementations
 
-- [SQLite FastAPI example](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_basic)
-- [PostgreSQL FastAPI example](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres)
+- [FastAPI credentials-auth reference implementation](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth)
+  that can run with SQLite by default or PostgreSQL via `DATABASE_URL` and
+  Docker Compose. It is a reference implementation, not a production template.

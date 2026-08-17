@@ -10,13 +10,11 @@ from fastapi_csrf_protect import CsrfProtect
 from fastapi_csrf_protect.exceptions import CsrfProtectError
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings
-from sqlalchemy import select, update
 
 from app.config import settings
 from app.database import AsyncSessionLocal
 from authloom import AuthLoom, create_auth_router
-from authloom.db import EmailVerificationToken, User
-from authloom.db.utils.time import utc_now
+from authloom.db import User
 from authloom.dtos import (
     ChangePasswordReqDto,
     PasswordResetHttpReqDto,
@@ -27,11 +25,11 @@ from authloom.dtos import (
 )
 from authloom.exceptions import (
     InvalidCredentialsException,
+    InvalidEmailVerificationTokenException,
     InvalidPasswordResetTokenException,
     PasswordPolicyException,
     UserAlreadyExistsException,
 )
-from authloom.service import hash_email_verification_token
 from authloom.settings import (
     AuthLoomConfig,
     AuthLoomCookieSessionConfig,
@@ -91,7 +89,7 @@ def send_password_reset_email(email: str, token: str) -> None:
 
 
 def send_email_verification_email(email: str, token: str) -> None:
-    link = f"{settings.app_base_url}/verify-email?token={token}"
+    link = f"{settings.app_base_url}/auth/email-verification?token={token}"
     send_email(
         recipient=email,
         subject="Verify your AuthLoom email address",
@@ -537,37 +535,18 @@ async def verify_email(request: Request, token: str = ""):
             status_code=400,
         )
 
-    token_hash = hash_email_verification_token(token)
-    now = utc_now()
-    async with AsyncSessionLocal() as session:
-        query = await session.execute(
-            select(EmailVerificationToken)
-            .where(
-                EmailVerificationToken.token_hash == token_hash,
-                EmailVerificationToken.used_at.is_(None),
-                EmailVerificationToken.expires_at > now,
-            )
-            .with_for_update()
+    try:
+        await auth.verify_email(token_raw=token)
+    except InvalidEmailVerificationTokenException:
+        return templates.TemplateResponse(
+            request=request,
+            name="verify_email.jinja2",
+            context={
+                "user": None,
+                "message": "The verification link is invalid or expired.",
+            },
+            status_code=400,
         )
-        verification_token = query.scalar_one_or_none()
-        if verification_token is None:
-            return templates.TemplateResponse(
-                request=request,
-                name="verify_email.jinja2",
-                context={
-                    "user": None,
-                    "message": "The verification link is invalid or expired.",
-                },
-                status_code=400,
-            )
-
-        verification_token.used_at = now
-        await session.execute(
-            update(User)
-            .where(User.id == verification_token.user_id)
-            .values(email_verified_at=now)
-        )
-        await session.commit()
 
     return templates.TemplateResponse(
         request=request,

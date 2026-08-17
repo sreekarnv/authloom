@@ -35,7 +35,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             authloom.db.utils.time.UTCDateTime(),
-            server_default=sa.text("now()"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
         sa.Column("expires_at", authloom.db.utils.time.UTCDateTime(), nullable=False),
@@ -64,7 +64,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             authloom.db.utils.time.UTCDateTime(),
-            server_default=sa.text("now()"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
         sa.Column("expires_at", authloom.db.utils.time.UTCDateTime(), nullable=False),

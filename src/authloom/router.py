@@ -166,7 +166,6 @@ def create_auth_router(
     @router.get(
         "/email-verification",
         status_code=status.HTTP_200_OK,
-        dependencies=unsafe_route_dependencies,
     )
     async def verify_email(token: str):
         try:
