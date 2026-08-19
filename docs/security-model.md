@@ -67,7 +67,7 @@ and should not require a browser CSRF token. Application-owned mutation routes
 must attach the same consumer-owned protection separately. CORS and
 trusted-origin configuration are separate from CSRF protection.
 
-The `fastapi-csrf-protect` integration in the example applications is optional
+The `fastapi-csrf-protect` integration in the example application is optional
 example code and is not a dependency of the AuthLoom package.
 
 ## Sign-In Failures
