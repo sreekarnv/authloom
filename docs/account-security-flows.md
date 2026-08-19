@@ -121,19 +121,29 @@ hooks = AuthLoomHooks(
 ```
 
 The hook receives `(email, raw_token)`. The consumer constructs the verification
-URL and sends it through its email provider. The PostgreSQL example uses
-MailHog for local delivery.
+URL and sends it through its email provider. The built-in verification URL is:
+
+```text
+/auth/email-verification?token=<token_raw>
+```
+
+The credentials auth example uses MailHog for local delivery.
 
 ### Complete Verification
 
-Core AuthLoom currently provides token creation but not a public token-consume
-service or route. The PostgreSQL example implements completion in its own
-application layer:
+The built-in route consumes a token and marks the email verified. Consumers
+calling the service directly can use:
 
-1. Hash the submitted raw token.
-2. Find an unused, unexpired token.
-3. Set `used_at` and `User.email_verified_at` in one transaction.
-4. Reject invalid, expired, and previously used tokens.
+```python
+await auth.verify_email(token_raw=token_raw)
+```
+
+On success, AuthLoom:
+
+1. Hashes the submitted raw token.
+2. Atomically claims an unused, unexpired token.
+3. Sets `used_at` and `User.email_verified_at` in one transaction.
+4. Rejects invalid, expired, and previously used tokens with a generic failure.
 
 `User.email_verified_at` has these semantics:
 
@@ -142,12 +152,18 @@ application layer:
 
 ## Example Application
 
-The PostgreSQL example demonstrates these flows with plain Jinja2 templates,
-consumer-owned CSRF protection, and MailHog:
+The credentials auth example demonstrates these flows with plain Jinja2
+templates, consumer-owned CSRF protection, and MailHog:
 
-[PostgreSQL credentials example](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth_postgres)
+[Credentials auth example](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth)
 
-Start its dependencies with:
+Start MailHog for local email delivery with:
+
+```bash
+docker compose up -d mailhog
+```
+
+If you are running the example with PostgreSQL, start both dependencies with:
 
 ```bash
 docker compose up -d postgres mailhog
@@ -163,6 +179,11 @@ All cookie-authenticated browser mutations require CSRF protection, including
 signup, signin, signout, password reset, password change, and verification
 request routes. AuthLoom does not provide CSRF token generation or validation.
 
-Attach the consumer's CSRF dependency to the built-in routes with
-`unsafe_route_dependencies`, and attach it separately to application-owned
-HTML routes. Configure CORS and trusted origins separately.
+Email verification completion is different: `/auth/email-verification?token=...`
+is a clickable bearer-token link. It should be HTTPS-only and should not require
+a browser CSRF token. Avoid logging full verification URLs because query tokens
+can appear in access logs, browser history, referrers, or analytics tools.
+
+Attach the consumer's CSRF dependency to AuthLoom's unsafe built-in routes with
+`unsafe_route_dependencies`, and attach it separately to application-owned HTML
+mutation routes. Configure CORS and trusted origins separately.

@@ -1,8 +1,8 @@
 """user_schema_model_init
 
-Revision ID: 5e91d527d776
+Revision ID: 2f77297b2da0
 Revises:
-Create Date: 2026-07-28 12:46:46.434584
+Create Date: 2026-07-31 09:20:48.624367
 
 """
 
@@ -14,7 +14,7 @@ from alembic import op
 import authloom
 
 # revision identifiers, used by Alembic.
-revision: str = "5e91d527d776"
+revision: str = "2f77297b2da0"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -32,13 +32,13 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             authloom.db.utils.time.UTCDateTime(),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
             authloom.db.utils.time.UTCDateTime(),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=True,
         ),
         sa.PrimaryKeyConstraint("id"),
@@ -58,7 +58,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             authloom.db.utils.time.UTCDateTime(),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
         sa.Column("user_id", sa.VARCHAR(), nullable=False),

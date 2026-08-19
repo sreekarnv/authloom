@@ -33,7 +33,8 @@ AuthLoom configuration is passed through `AuthLoomConfig`.
 ## Security Flow Hooks
 
 Hooks receive the destination email address and the raw, one-time token after
-AuthLoom has persisted its hash. AuthLoom does not send email.
+AuthLoom has persisted its hash. AuthLoom does not send email; consumers use
+these hooks only to deliver password-reset and email-verification links.
 
 ```python
 from authloom import AuthLoom
@@ -58,3 +59,5 @@ Callable[[str, str], None]
 
 Consumers are responsible for constructing links, sending messages, and
 preventing raw tokens from appearing in logs or persistent application data.
+AuthLoom owns token consumption for its built-in password-reset and
+email-verification completion routes.
