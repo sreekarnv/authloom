@@ -204,7 +204,7 @@ implementation. AuthLoom provides a generic dependency hook for attaching that
 solution to its built-in mutation routes. CORS and trusted-origin configuration
 remain separate application responsibilities.
 
-The `fastapi-csrf-protect` integration shown in the example applications is an
+The `fastapi-csrf-protect` integration shown in the example application is an
 optional example dependency. It is not installed by or required by core
 AuthLoom.
 

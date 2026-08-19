@@ -181,7 +181,7 @@ route. Add the same dependency to your own mutation routes.
 You may use [`fastapi-csrf-protect`](https://pypi.org/project/fastapi-csrf-protect/),
 another library, or your own implementation. Configure CORS separately.
 
-The example applications include `fastapi-csrf-protect` only to demonstrate one
+The example application includes `fastapi-csrf-protect` only to demonstrate one
 possible integration. It is not installed with core AuthLoom and is not required
 for consumers using another CSRF solution.
 
@@ -194,7 +194,7 @@ The router is mounted at `/auth` and provides:
 | `POST` | `/auth/signout` | Revoke the current session and delete the session cookie when present. |
 | `GET` | `/auth/me` | Return the current authenticated user. |
 | `POST` | `/auth/request-password-reset` | Create a password-reset token and invoke the consumer hook when configured. |
-| `POST` | `/auth/password-reset` | Consume a valid reset token and update the password. |
+| `POST` | `/auth/password-reset?token=<token_raw>` | Consume a valid reset token and update the password. |
 | `POST` | `/auth/password-change` | Verify the current password, change the password, and revoke other sessions. |
 | `POST` | `/auth/request-email-verification` | Create an email-verification token and invoke the consumer hook when configured. |
 | `GET` | `/auth/email-verification?token=<token_raw>` | Consume a valid verification token and mark the user's email verified. |

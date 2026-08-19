@@ -2,6 +2,31 @@
 
 All notable changes to AuthLoom will be documented in this file.
 
+## 0.1.0a5 — 2026-08-19
+
+### Added
+
+- Completed email verification and now set `User.email_verified_at`.
+- Added `GET /auth/email-verification?token=<token_raw>` for email verification
+  links.
+- Added tests for requesting and completing email verification.
+
+### Changed
+
+- Combined the credentials-auth examples into `examples/credentials_auth/`,
+  with SQLite by default and PostgreSQL as an option.
+- Updated package docs for current auth flows, migrations, security guidance,
+  and the unified example.
+
+### Security
+
+- Email-verification tokens are single-use, expire, and are stored only as
+  hashes.
+- Email verification now marks the token used and updates the user in one
+  database transaction.
+- Documented that verification links should use HTTPS and should not be logged
+  in full.
+
 ## 0.1.0a4 — 2026-08-09
 
 ### Added
