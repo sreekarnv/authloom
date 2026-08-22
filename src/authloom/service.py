@@ -392,6 +392,15 @@ class AuthLoom:
             await session.execute(
                 update(User).where(User.id == user_id).values(password=password_hash)
             )
+            await session.execute(
+                update(Session)
+                .where(
+                    Session.user_id == user_id,
+                    Session.revoked_at.is_(None),
+                    Session.expires_at > now,
+                )
+                .values(revoked_at=now)
+            )
 
             await session.commit()
 

@@ -77,8 +77,8 @@ async def optional_route(
 | `POST` | `/auth/signout` | Revoke the current session and delete the session cookie when present. |
 | `GET` | `/auth/me` | Return the current authenticated user. |
 | `POST` | `/auth/request-password-reset` | Create a password-reset token and invoke the consumer hook when configured. |
-| `POST` | `/auth/password-reset?token=<token_raw>` | Consume a valid reset token and update the password. |
-| `POST` | `/auth/password-change` | Verify the current password, change the password, and revoke other sessions. |
+| `POST` | `/auth/password-reset?token=<token_raw>` | Consume a valid reset token, update the password, and revoke every session. |
+| `POST` | `/auth/password-change` | Verify the current password, change the password, and revoke other sessions while preserving the current session when supplied. |
 | `POST` | `/auth/request-email-verification` | Create an email-verification token and invoke the consumer hook when configured. |
 | `GET` | `/auth/email-verification?token=<token_raw>` | Consume a valid verification token and mark the user's email verified. |
 
@@ -178,8 +178,10 @@ AuthLoom currently provides:
 - Session expiry based on the configured cookie/session lifetime.
 - Session revocation during signout.
 - Manual cleanup of expired or revoked sessions.
-- Password-reset token creation and single-use password reset.
-- Password-change current-password verification and session invalidation.
+- Password-reset token creation, single-use password reset, and automatic
+  revocation of every active session after a successful reset.
+- Password-change current-password verification and session invalidation that
+  may preserve the current session.
 - Email-verification token creation and single-use completion.
 - `HttpOnly` cookie support.
 - Generic invalid-credential responses for signin failures.

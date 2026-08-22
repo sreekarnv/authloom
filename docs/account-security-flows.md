@@ -68,12 +68,9 @@ await auth.verify_token_reset_password(
 ```
 
 The operation validates the password policy, rejects invalid, expired, and
-already-used tokens, marks a valid token with `used_at`, and updates the
-password in the same transaction.
-
-Password reset does not currently revoke existing sessions automatically. A
-consumer that requires that policy should call `revoke_all_sessions` after a
-successful reset.
+already-used tokens, marks a valid token with `used_at`, updates the password,
+and revokes every active session for the affected user in the same transaction.
+Consumers do not need to call `revoke_all_sessions` after password reset.
 
 ## Password Change
 
@@ -92,7 +89,8 @@ updated_user = await auth.change_password(
 On success, AuthLoom verifies the current password, hashes the new password,
 preserves the supplied current session, and revokes the user's other active
 sessions. If no current session token is supplied, all active sessions are
-revoked.
+revoked. This differs from password reset, which revokes every session and
+preserves no current session.
 
 Invalid current credentials raise `InvalidCredentialsException`. Password
 length failures raise `PasswordPolicyException`.

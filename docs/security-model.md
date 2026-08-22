@@ -17,7 +17,9 @@ AuthLoom currently provides:
 - Session revocation during signout.
 - Explicit invalidation of all active sessions, optionally preserving one
   current session.
-- Password-reset token creation and single-use password reset.
+- Password-reset token creation, single-use password reset, and automatic
+  revocation of every active session for the affected user after a successful
+  reset.
 - Password-change current-password verification and session invalidation.
 - Email-verification token creation and single-use completion that sets
   `User.email_verified_at`.
@@ -32,9 +34,11 @@ configured consumer hook and stores only a SHA-256 hash in the database.
 
 Both token types include creation and expiry timestamps and a nullable
 `used_at`. A token must be unused and unexpired to be accepted. A successful
-password reset marks its token used in the same transaction as the password
-update. A successful email verification marks its token used in the same
-transaction as the `User.email_verified_at` update.
+password reset atomically claims the token, updates the password, and revokes
+every active session for the affected user in the same transaction. Failed
+password reset attempts do not revoke sessions. A successful email verification
+marks its token used in the same transaction as the `User.email_verified_at`
+update.
 
 Verification links use the raw token as bearer authorization, for example
 `/auth/email-verification?token=<token_raw>`. Keep these links HTTPS-only and
