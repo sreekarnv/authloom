@@ -7,10 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from authloom import AuthLoom, AuthLoomConfig
-from authloom.db.schema import ResetPasswordToken
+from authloom.db.schema import ResetPasswordToken, Session
 from authloom.db.utils.time import utc_now
 from authloom.exceptions import PasswordPolicyCode
-from authloom.service import hash_password_reset_token
+from authloom.service import hash_password_reset_token, hash_session_token
 
 
 def _session_maker(async_engine: AsyncEngine):
@@ -79,7 +79,7 @@ async def test_request_password_reset_unknown_email_returns_none(
 
 
 @pytest.mark.asyncio
-async def test_password_reset_with_valid_token_updates_password_and_marks_token_used(
+async def test_password_reset_with_valid_token_updates_password_and_revokes_sessions(
     app: FastAPI,
     async_engine: AsyncEngine,
 ):
@@ -92,11 +92,20 @@ async def test_password_reset_with_valid_token_updates_password_and_marks_token_
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         signup_response = await _signup(client, email, old_value)
+        current_token = signup_response.cookies["authloom.auth"]
+        signin_response = await client.post(
+            "/auth/signin", json={"email": email, "password": old_value}
+        )
+        other_token = signin_response.cookies["authloom.auth"]
         token_raw = await auth.request_password_reset(email=email)
         reset_response = await client.post(
             f"/auth/password-reset?token={token_raw}",
             json={"password": new_value, "password_confirm": new_value},
         )
+        client.cookies.set("authloom.auth", current_token)
+        current_session_response = await client.get("/auth/me")
+        client.cookies.set("authloom.auth", other_token)
+        other_session_response = await client.get("/auth/me")
         old_signin_response = await client.post(
             "/auth/signin", json={"email": email, "password": old_value}
         )
@@ -107,12 +116,25 @@ async def test_password_reset_with_valid_token_updates_password_and_marks_token_
     async with session_maker() as session:
         result = await session.execute(select(ResetPasswordToken))
         reset_token = result.scalar_one()
+        result = await session.execute(
+            select(Session).where(
+                Session.token_hash.in_(
+                    [hash_session_token(current_token), hash_session_token(other_token)]
+                )
+            )
+        )
+        sessions = result.scalars().all()
 
     assert signup_response.status_code == status.HTTP_201_CREATED
+    assert signin_response.status_code == status.HTTP_200_OK
     assert reset_response.status_code == status.HTTP_200_OK
+    assert current_session_response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert other_session_response.status_code == status.HTTP_401_UNAUTHORIZED
     assert old_signin_response.status_code == status.HTTP_401_UNAUTHORIZED
     assert new_signin_response.status_code == status.HTTP_200_OK
     assert reset_token.used_at is not None
+    assert len(sessions) == 2
+    assert all(session.revoked_at is not None for session in sessions)
 
 
 @pytest.mark.asyncio
@@ -126,10 +148,13 @@ async def test_password_reset_rejects_invalid_token(
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         signup_response = await _signup(client, email, old_value)
+        current_token = signup_response.cookies["authloom.auth"]
         reset_response = await client.post(
             "/auth/password-reset?token=invalid-token",
             json={"password": new_value, "password_confirm": new_value},
         )
+        client.cookies.set("authloom.auth", current_token)
+        current_session_response = await client.get("/auth/me")
         old_signin_response = await client.post(
             "/auth/signin", json={"email": email, "password": old_value}
         )
@@ -139,6 +164,7 @@ async def test_password_reset_rejects_invalid_token(
 
     assert signup_response.status_code == status.HTTP_201_CREATED
     assert reset_response.status_code == status.HTTP_400_BAD_REQUEST
+    assert current_session_response.status_code == status.HTTP_200_OK
     assert old_signin_response.status_code == status.HTTP_200_OK
     assert new_signin_response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -157,6 +183,7 @@ async def test_password_reset_rejects_expired_token(
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         signup_response = await _signup(client, email, old_value)
+        current_token = signup_response.cookies["authloom.auth"]
         token_raw = await auth.request_password_reset(email=email)
 
     async with session_maker() as session:
@@ -166,16 +193,19 @@ async def test_password_reset_rejects_expired_token(
         await session.commit()
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        client.cookies.set("authloom.auth", current_token)
         reset_response = await client.post(
             f"/auth/password-reset?token={token_raw}",
             json={"password": new_value, "password_confirm": new_value},
         )
+        current_session_response = await client.get("/auth/me")
         old_signin_response = await client.post(
             "/auth/signin", json={"email": email, "password": old_value}
         )
 
     assert signup_response.status_code == status.HTTP_201_CREATED
     assert reset_response.status_code == status.HTTP_400_BAD_REQUEST
+    assert current_session_response.status_code == status.HTTP_200_OK
     assert old_signin_response.status_code == status.HTTP_200_OK
 
 
@@ -193,6 +223,7 @@ async def test_password_reset_rejects_used_token(
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         signup_response = await _signup(client, email, old_value)
+        current_token = signup_response.cookies["authloom.auth"]
         token_raw = await auth.request_password_reset(email=email)
 
     async with session_maker() as session:
@@ -202,16 +233,19 @@ async def test_password_reset_rejects_used_token(
         await session.commit()
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        client.cookies.set("authloom.auth", current_token)
         reset_response = await client.post(
             f"/auth/password-reset?token={token_raw}",
             json={"password": new_value, "password_confirm": new_value},
         )
+        current_session_response = await client.get("/auth/me")
         old_signin_response = await client.post(
             "/auth/signin", json={"email": email, "password": old_value}
         )
 
     assert signup_response.status_code == status.HTTP_201_CREATED
     assert reset_response.status_code == status.HTTP_400_BAD_REQUEST
+    assert current_session_response.status_code == status.HTTP_200_OK
     assert old_signin_response.status_code == status.HTTP_200_OK
 
 
