@@ -2,6 +2,22 @@
 
 All notable changes to AuthLoom will be documented in this file.
 
+## 0.1.0a6 — 2026-08-23
+
+### Security
+
+- Password reset now automatically revokes every active session for the
+  affected user after a successful reset.
+- Password-reset token consumption, password update, and session revocation now
+  commit atomically.
+- Failed password-reset attempts do not revoke existing sessions.
+
+### Changed
+
+- Updated account-security documentation to clarify that password reset revokes
+  all sessions, while authenticated password change may preserve the current
+  session.
+
 ## 0.1.0a5 — 2026-08-19
 
 ### Added
