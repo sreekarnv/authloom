@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+import unicodedata
 from datetime import UTC, datetime, timedelta
 
 import email_normalize
@@ -83,6 +84,9 @@ class AuthLoom:
                 ),
             )
 
+    def _normalize_password(self, password: str) -> str:
+        return unicodedata.normalize("NFC", password)
+
     async def require_current_user(self, request: Request) -> User:
         token_raw = request.cookies.get(self.config.cookie_session.cookie_name)
         if not token_raw:
@@ -110,7 +114,8 @@ class AuthLoom:
     async def signup(
         self, input: SignupSrvInputDto
     ) -> tuple[UserResDto, SessionResDto]:
-        self._validate_password_policy(input.password)
+        password = self._normalize_password(input.password)
+        self._validate_password_policy(password)
         email_normalizer = email_normalize.Normalizer()
         normalized_result = await email_normalizer.normalize(input.email)
 
@@ -125,7 +130,7 @@ class AuthLoom:
             if user:
                 raise UserAlreadyExistsException()
 
-            hashed_password = self.password_hasher.hash(input.password)
+            hashed_password = self.password_hasher.hash(password)
 
             user = User(
                 name=input.name,
@@ -168,7 +173,9 @@ class AuthLoom:
     async def signin(
         self, input: SigninSrvInputDto
     ) -> tuple[UserResDto, SessionResDto]:
-        if len(input.password) > self.config.password_config.max_length:
+        password = self._normalize_password(input.password)
+
+        if len(password) > self.config.password_config.max_length:
             raise InvalidCredentialsException()
 
         email_normalizer = email_normalize.Normalizer()
@@ -185,15 +192,13 @@ class AuthLoom:
 
             if user is None:
                 try:
-                    self.password_hasher.verify(
-                        self.dummy_password_hash, input.password
-                    )
+                    self.password_hasher.verify(self.dummy_password_hash, password)
                 except VerificationError:
                     pass
                 raise InvalidCredentialsException()
 
             try:
-                self.password_hasher.verify(user.password, input.password)
+                self.password_hasher.verify(user.password, password)
             except (InvalidHashError, VerificationError):
                 raise InvalidCredentialsException() from None
 
@@ -364,6 +369,7 @@ class AuthLoom:
         return token
 
     async def complete_password_reset(self, token_raw: str, new_password: str) -> None:
+        new_password = self._normalize_password(new_password)
         self._validate_password_policy(new_password)
 
         token_hash = hash_password_reset_token(token_raw=token_raw)
@@ -418,6 +424,8 @@ class AuthLoom:
         new_password: str,
         preserve_session_token_raw: str | None = None,
     ) -> UserResDto | None:
+        current_password = self._normalize_password(current_password)
+        new_password = self._normalize_password(new_password)
         self._validate_password_policy(new_password)
 
         async with self.session_factory() as session:
