@@ -363,9 +363,7 @@ class AuthLoom:
 
         return token
 
-    async def complete_password_reset(
-        self, token_raw: str, new_password: str
-    ) -> None:
+    async def complete_password_reset(self, token_raw: str, new_password: str) -> None:
         self._validate_password_policy(new_password)
 
         token_hash = hash_password_reset_token(token_raw=token_raw)
