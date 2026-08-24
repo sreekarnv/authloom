@@ -393,6 +393,14 @@ class AuthLoom:
                 update(User).where(User.id == user_id).values(password=password_hash)
             )
             await session.execute(
+                update(ResetPasswordToken)
+                .where(
+                    ResetPasswordToken.user_id == user_id,
+                    ResetPasswordToken.used_at.is_(None),
+                )
+                .values(used_at=now)
+            )
+            await session.execute(
                 update(Session)
                 .where(
                     Session.user_id == user_id,
@@ -436,6 +444,7 @@ class AuthLoom:
                 raise InvalidCredentialsException() from None
 
             hashed_password = self.password_hasher.hash(new_password)
+            now = utc_now()
             update_query = await session.execute(
                 update(User)
                 .where(User.id == user_id)
@@ -447,7 +456,7 @@ class AuthLoom:
             conditions = [
                 Session.user_id == user_id,
                 Session.revoked_at.is_(None),
-                Session.expires_at > utc_now(),
+                Session.expires_at > now,
             ]
 
             if preserve_session_token_raw is not None:
@@ -456,7 +465,15 @@ class AuthLoom:
                 )
 
             await session.execute(
-                update(Session).where(and_(*conditions)).values(revoked_at=utc_now())
+                update(ResetPasswordToken)
+                .where(
+                    ResetPasswordToken.user_id == user_id,
+                    ResetPasswordToken.used_at.is_(None),
+                )
+                .values(used_at=now)
+            )
+            await session.execute(
+                update(Session).where(and_(*conditions)).values(revoked_at=now)
             )
             await session.commit()
 

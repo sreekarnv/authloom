@@ -250,6 +250,52 @@ async def test_password_reset_rejects_used_token(
 
 
 @pytest.mark.asyncio
+async def test_password_reset_invalidates_other_unused_reset_tokens(
+    app: FastAPI,
+    async_engine: AsyncEngine,
+):
+    transport = ASGITransport(app=app)
+    session_maker = _session_maker(async_engine)
+    auth = AuthLoom(config=AuthLoomConfig(session_factory=session_maker))
+    email = "test_password_reset_invalidates_other_unused_tokens@example.com"
+    old_value = "#SUPERSECRETPASSWORD#"
+    reset_value = "#RESETSUPERSECRETPASSWORD#"
+    stale_value = "#STALESUPERSECRETPASSWORD#"
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        signup_response = await _signup(client, email, old_value)
+        stale_token_raw = await auth.request_password_reset(email=email)
+        valid_token_raw = await auth.request_password_reset(email=email)
+
+        valid_reset_response = await client.post(
+            f"/auth/password-reset?token={valid_token_raw}",
+            json={"password": reset_value, "password_confirm": reset_value},
+        )
+        stale_reset_response = await client.post(
+            f"/auth/password-reset?token={stale_token_raw}",
+            json={"password": stale_value, "password_confirm": stale_value},
+        )
+        reset_signin_response = await client.post(
+            "/auth/signin", json={"email": email, "password": reset_value}
+        )
+        stale_signin_response = await client.post(
+            "/auth/signin", json={"email": email, "password": stale_value}
+        )
+
+    async with session_maker() as session:
+        result = await session.execute(select(ResetPasswordToken))
+        reset_tokens = result.scalars().all()
+
+    assert signup_response.status_code == status.HTTP_201_CREATED
+    assert valid_reset_response.status_code == status.HTTP_200_OK
+    assert stale_reset_response.status_code == status.HTTP_400_BAD_REQUEST
+    assert reset_signin_response.status_code == status.HTTP_200_OK
+    assert stale_signin_response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert len(reset_tokens) == 2
+    assert all(token.used_at is not None for token in reset_tokens)
+
+
+@pytest.mark.asyncio
 async def test_password_reset_enforces_password_policy(
     app: FastAPI,
     async_engine: AsyncEngine,
