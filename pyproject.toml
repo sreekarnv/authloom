@@ -1,6 +1,6 @@
 [project]
 name = "authloom"
-version = "0.1.0a6"
+version = "0.1.0a7"
 description = "Authentication building blocks for FastAPI applications"
 readme = "README.md"
 authors = [
