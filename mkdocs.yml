@@ -27,10 +27,10 @@ theme:
 nav:
   - Home: index.md
   - Consumer Integration: consumer-integration.md
+  - Database and Migrations: database-and-migrations.md
   - Configuration: configuration.md
   - Account Security Flows: account-security-flows.md
-  - Database And Migrations: database-and-migrations.md
-  - Security: security-model.md
+  - Security Model: security-model.md
 
 markdown_extensions:
   - admonition

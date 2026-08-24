@@ -1,43 +1,35 @@
 # Credentials Auth Example
 
-This example shows how a FastAPI application can consume AuthLoom for email/password authentication with session cookies, account-security flows, consumer-owned CSRF protection, and consumer-owned email delivery.
+This example shows one FastAPI application using AuthLoom for email/password
+authentication, session cookies, account-security flows, CSRF protection, and
+local email delivery.
 
-It can run with SQLite for quick local development or PostgreSQL for a more production-like local setup.
+It is for learning and integration testing. It is not a production application
+template.
 
-This is a reference implementation for learning and integration testing. It is not a production application template; review security, deployment, email, CSRF, rate limiting, observability, and operational requirements before adapting it.
+## Prerequisites
+
+- Python 3.12 or newer.
+- Docker, if you use MailHog for local email delivery or PostgreSQL for the
+  database.
+
+SQLite is the default database and does not need Docker. The HTML signup and
+email flows still expect a reachable SMTP server. This README uses MailHog for
+that SMTP server.
 
 ## What It Demonstrates
 
-- Plain Jinja2 template pages for signup, signin, signout, password reset, password change, and email verification.
-- AuthLoom's JSON router under `/auth`.
-- Application-owned routes that use AuthLoom authentication dependencies.
+- Plain Jinja2 HTML pages for signup, signin, signout, password reset, password
+  change, and email verification.
+- AuthLoom's built-in JSON routes under `/auth`.
+- Application-owned routes using AuthLoom current-user dependencies.
 - AuthLoom metadata combined with application-owned SQLAlchemy models.
 - Consumer-owned Alembic migrations.
 - SQLite or PostgreSQL through one `DATABASE_URL` setting.
-- Consumer-owned CSRF protection for browser cookie flows.
+- Consumer-owned CSRF protection.
 - Local password-reset and email-verification delivery through MailHog.
 
-## Responsibilities
-
-AuthLoom owns:
-
-- Authentication routes mounted with `create_auth_router(auth)`.
-- User and session models exposed through `authloom.db`.
-- Session cookie creation, validation, revocation, and deletion.
-- Password hashing and credential verification.
-- Password reset, password change, and email-verification token consumption.
-
-The consuming application owns:
-
-- Database engine and session factory setup.
-- Alembic migration history.
-- Application models, such as `Post`.
-- Application routes that use AuthLoom authentication dependencies.
-- Environment and deployment-specific configuration.
-- CSRF token issuance, validation, and cookie/body configuration.
-- Email delivery. This example sends password-reset and email-verification links through MailHog.
-
-## Install
+## 1. Install
 
 From this directory:
 
@@ -48,11 +40,35 @@ pip install -r requirements.txt
 pip install -e ../../
 ```
 
-When copied into a separate application, replace `pip install -e ../../` with a normal AuthLoom package dependency.
+When copied into a separate application, replace `pip install -e ../../` with a
+normal AuthLoom package dependency.
 
-## Choose A Database
+## 2. Create .env And Set A CSRF Secret
 
-SQLite is the default and does not require Docker:
+Create `.env` from the example file:
+
+```bash
+cp .env.example .env
+```
+
+Set a strong `CSRF_SECRET_KEY`. It must be at least 32 characters.
+
+```env
+CSRF_SECRET_KEY=replace-with-a-long-random-value-123456
+```
+
+Other default settings:
+
+```env
+APP_BASE_URL=http://127.0.0.1:8000
+SMTP_HOST=127.0.0.1
+SMTP_PORT=1025
+EMAIL_FROM=no-reply@authloom.local
+```
+
+## 3. Choose A Database
+
+SQLite is the default:
 
 ```env
 DATABASE_URL=sqlite+aiosqlite:///./authloom_example.db
@@ -68,32 +84,27 @@ docker compose up -d postgres
 DATABASE_URL=postgresql+asyncpg://authloom:authloom@localhost:5432/authloom
 ```
 
-Both options use async SQLAlchemy URLs. Do not use synchronous URLs such as `sqlite:///...` or `postgresql://...`.
+Both options use async SQLAlchemy URLs. Do not use synchronous URLs such as
+`sqlite:///...` or `postgresql://...`.
 
-## Configure Environment
+## 4. Start MailHog
 
-Create `.env` from the example file:
+Start MailHog before testing signup, password reset, or email verification:
 
 ```bash
-cp .env.example .env
+docker compose up -d mailhog
 ```
 
-Set a strong `CSRF_SECRET_KEY` before starting the app:
+MailHog's inbox is available at:
 
-```env
-CSRF_SECRET_KEY=replace-with-a-long-random-value
+```text
+http://127.0.0.1:8025
 ```
 
-Other useful settings:
+Email delivery is application-owned. In this example, failed email delivery can
+occur after AuthLoom has already persisted an account or token.
 
-```env
-APP_BASE_URL=http://127.0.0.1:8000
-SMTP_HOST=127.0.0.1
-SMTP_PORT=1025
-EMAIL_FROM=no-reply@authloom.local
-```
-
-## Run Database Migrations
+## 5. Run Database Migrations
 
 From this directory:
 
@@ -101,32 +112,100 @@ From this directory:
 alembic upgrade head
 ```
 
-The example owns its Alembic migration history and includes AuthLoom metadata in `alembic/env.py` so migrations include AuthLoom tables and the example `posts` table.
+The example owns its Alembic migration history. `alembic/env.py` includes
+AuthLoom metadata and the example application's metadata.
 
-## Start MailHog
-
-Password-reset and email-verification links are sent through SMTP. For local delivery, start MailHog:
-
-```bash
-docker compose up -d mailhog
-```
-
-MailHog's inbox is available at `http://127.0.0.1:8025`.
-
-If MailHog is not running, routes that request password-reset or email-verification emails can fail when the delivery hook tries to send mail.
-
-## Start The App
+## 6. Start The App
 
 From this directory:
 
 ```bash
-fastapi dev
+fastapi dev app/main.py
 ```
 
 The app will be available at:
 
 ```text
 http://127.0.0.1:8000
+```
+
+## 7. Test With Curl
+
+The built-in `/auth` routes are protected by this example's CSRF dependency.
+Fetch a CSRF token before each unsafe request. The commands below store it in
+`$CSRF_TOKEN` and send that value with the request.
+
+Use a cookie jar so curl preserves both the CSRF cookie and the AuthLoom session
+cookie:
+
+```bash
+rm -f cookies.txt
+CSRF_TOKEN=$(curl -s -c cookies.txt http://127.0.0.1:8000/csrf \
+  | python -c 'import json, sys; print(json.load(sys.stdin)["csrf_token"])')
+echo "$CSRF_TOKEN"
+```
+
+### Signup
+
+```bash
+curl -i -b cookies.txt -c cookies.txt \
+  -X POST http://127.0.0.1:8000/auth/signup \
+  -H 'content-type: application/json' \
+  -d "{
+    \"csrf_token\": \"$CSRF_TOKEN\",
+    \"name\": \"Example User\",
+    \"email\": \"user@example.com\",
+    \"password\": \"abcdefghijklmno\",
+    \"password_confirm\": \"abcdefghijklmno\"
+  }"
+```
+
+The password is 15 characters to satisfy the default minimum length.
+
+### Current User
+
+```bash
+curl -i -b cookies.txt http://127.0.0.1:8000/auth/me
+```
+
+### Signout
+
+Fetch a fresh CSRF token, then sign out:
+
+```bash
+CSRF_TOKEN=$(curl -s -b cookies.txt -c cookies.txt http://127.0.0.1:8000/csrf \
+  | python -c 'import json, sys; print(json.load(sys.stdin)["csrf_token"])')
+
+curl -i -b cookies.txt -c cookies.txt \
+  -X POST http://127.0.0.1:8000/auth/signout \
+  -H 'content-type: application/x-www-form-urlencoded' \
+  -d "csrf_token=$CSRF_TOKEN"
+```
+
+After signout, `/auth/me` should return `401`.
+
+### Signin
+
+Fetch a fresh CSRF token, then sign in again:
+
+```bash
+CSRF_TOKEN=$(curl -s -b cookies.txt -c cookies.txt http://127.0.0.1:8000/csrf \
+  | python -c 'import json, sys; print(json.load(sys.stdin)["csrf_token"])')
+
+curl -i -b cookies.txt -c cookies.txt \
+  -X POST http://127.0.0.1:8000/auth/signin \
+  -H 'content-type: application/json' \
+  -d "{
+    \"csrf_token\": \"$CSRF_TOKEN\",
+    \"email\": \"user@example.com\",
+    \"password\": \"abcdefghijklmno\"
+  }"
+```
+
+Confirm the new session:
+
+```bash
+curl -i -b cookies.txt http://127.0.0.1:8000/auth/me
 ```
 
 ## HTML Routes
@@ -141,69 +220,50 @@ The example renders plain Jinja2 templates:
 - `GET/POST /reset-password` completes a password reset.
 - `GET/POST /account/password` changes the current password.
 - `POST /account/email-verification` requests a verification link.
-- `GET /auth/email-verification?token=...` consumes a verification link through AuthLoom core.
-- `GET /verify-email` is an optional HTML wrapper that delegates to AuthLoom core when used directly.
+- `GET /verify-email` is an optional HTML verification result page.
 - `GET /account` displays the current user and verification state.
 
-The JSON AuthLoom router remains available under `/auth`.
+Generated verification emails currently use AuthLoom's built-in route:
 
-## Authentication Flow With Curl
-
-Use a cookie jar so curl preserves the session cookie between requests.
-
-Fetch a CSRF token before unsafe requests:
-
-```bash
-curl -i -c cookies.txt http://127.0.0.1:8000/csrf
+```text
+/auth/email-verification?token=...
 ```
 
-Include the returned token as the `csrf_token` field in each unsafe request. The HTML forms already include this hidden field.
+## Built-In /auth Routes
 
-### Signup
+The AuthLoom JSON router is mounted under `/auth`:
 
-```bash
-curl -i -b cookies.txt -c cookies.txt \
-  -X POST http://127.0.0.1:8000/auth/signup \
-  -H 'content-type: application/json' \
-  -d '{
-    "csrf_token": "<csrf-token>",
-    "name": "Example User",
-    "email": "user@example.com",
-    "password": "abcdefghijklmno",
-    "password_confirm": "abcdefghijklmno"
-  }'
-```
-
-The response sets the `authloom.auth` cookie.
-
-### Current User
-
-```bash
-curl -i -b cookies.txt http://127.0.0.1:8000/auth/me
-```
-
-### Signout
-
-```bash
-curl -i -b cookies.txt -c cookies.txt \
-  -X POST http://127.0.0.1:8000/auth/signout \
-  -H 'content-type: application/x-www-form-urlencoded' \
-  -d 'csrf_token=<csrf-token>'
-```
-
-After signout, authenticated routes should return `401`.
+- `POST /auth/signup`
+- `POST /auth/signin`
+- `POST /auth/signout`
+- `GET /auth/me`
+- `POST /auth/request-password-reset`
+- `POST /auth/password-reset?token=...`
+- `POST /auth/password-change`
+- `POST /auth/request-email-verification`
+- `GET /auth/email-verification?token=...`
 
 ## CSRF Responsibility
 
-This example uses `fastapi-csrf-protect` to protect AuthLoom's signup, signin, signout, password-reset request, password-reset completion, password-change, and email-verification request routes through `unsafe_route_dependencies`. It also protects the application-owned `POST /example-mutation` route.
+This example uses `fastapi-csrf-protect` to protect AuthLoom's unsafe built-in
+routes through `unsafe_route_dependencies`. It also protects application-owned
+HTML form posts and the example `POST /example-mutation` route.
 
-AuthLoom does not generate or validate CSRF tokens, and the example does not claim that they are bound to AuthLoom sessions. The clickable `GET /auth/email-verification?token=...` route uses the verification token as bearer authorization and does not require a CSRF token. CORS remains a separate application configuration concern.
+AuthLoom does not generate or validate CSRF tokens. The clickable
+`GET /auth/email-verification?token=...` route uses the verification token as
+bearer authorization and does not require a CSRF token. CORS is separate
+application configuration.
 
 ## Troubleshooting
 
-- If migrations fail with a driver error, check that `DATABASE_URL` uses `sqlite+aiosqlite://` or `postgresql+asyncpg://`.
-- If PostgreSQL connection fails, run `docker compose up -d postgres` and confirm port `5432` is available.
-- If email links do not appear, run `docker compose up -d mailhog` and open `http://127.0.0.1:8025`.
-- If forms fail CSRF validation, fetch a fresh `/csrf` token or clear stale cookies.
-- If cookies are not sent over local HTTP, ensure `secure=False` in local cookie settings.
+- If migrations fail with a driver error, check that `DATABASE_URL` uses
+  `sqlite+aiosqlite://` or `postgresql+asyncpg://`.
+- If PostgreSQL connection fails, run `docker compose up -d postgres` and confirm
+  port `5432` is available.
+- If email links do not appear, run `docker compose up -d mailhog` and open
+  `http://127.0.0.1:8025`.
+- If forms fail CSRF validation, fetch a fresh `/csrf` token or clear stale
+  cookies.
+- If cookies are not sent over local HTTP, ensure `secure=False` in local cookie
+  settings.
 - If a reset or verification link fails, it may be expired or already used.

@@ -1,90 +1,41 @@
-# Consumer Integration Guide
+# Consumer Integration
 
-This guide shows how to add AuthLoom to an existing FastAPI application after installing the published package from PyPI.
+This tutorial adds AuthLoom to an existing FastAPI app and gets to the first
+successful signup, current-user request, signout, and signin.
 
-It does not create another example application. For a complete FastAPI credentials-auth reference implementation that can run with SQLite by default or PostgreSQL via `DATABASE_URL` and Docker Compose, see [`examples/credentials_auth/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth). It is a reference implementation, not a production application template.
+It uses SQLite with `aiosqlite` for one clear path. If your app uses PostgreSQL,
+install `asyncpg` instead and use a `postgresql+asyncpg://...` URL.
 
-## Install AuthLoom
+## 1. Install
+
+AuthLoom requires Python `>=3.12`, FastAPI, and SQLAlchemy async sessions.
 
 Using `uv`:
 
 ```bash
-uv add authloom
+uv add authloom aiosqlite
 ```
 
 Using `pip`:
 
 ```bash
-pip install authloom
+pip install authloom aiosqlite
 ```
 
-Install the async database driver your application uses:
+## 2. Create The Engine And Session Factory
 
-```bash
-uv add aiosqlite
-uv add asyncpg
-```
-
-Or with `pip`:
-
-```bash
-pip install aiosqlite
-pip install asyncpg
-```
-
-Use `aiosqlite` for SQLite URLs and `asyncpg` for PostgreSQL URLs.
-
-## Configure The Database URL
-
-AuthLoom uses your application's async SQLAlchemy engine and session factory. Store the database URL in your normal application settings.
-
-SQLite for local development:
+AuthLoom uses the async SQLAlchemy session factory created by your app.
 
 ```python
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 database_url = "sqlite+aiosqlite:///./app.db"
-```
-
-PostgreSQL:
-
-```python
-database_url = "postgresql+asyncpg://user:password@localhost:5432/app"
-```
-
-Use SQLAlchemy's async dialect names. `sqlite:///...` and `postgresql://...` are synchronous URLs and are not supported by AuthLoom's current public API.
-
-## Create The Async Engine
-
-Create the engine in your application, not inside AuthLoom.
-
-SQLite:
-
-```python
-from sqlalchemy.ext.asyncio import create_async_engine
 
 engine = create_async_engine(
-    "sqlite+aiosqlite:///./app.db",
+    database_url,
     echo=False,
     connect_args={"check_same_thread": False},
 )
-```
-
-PostgreSQL:
-
-```python
-from sqlalchemy.ext.asyncio import create_async_engine
-
-engine = create_async_engine(
-    "postgresql+asyncpg://user:password@localhost:5432/app",
-    echo=False,
-)
-```
-
-## Create The Session Factory
-
-AuthLoom requires an `async_sessionmaker[AsyncSession]`.
-
-```python
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 AsyncSessionLocal = async_sessionmaker(
     engine,
@@ -93,21 +44,22 @@ AsyncSessionLocal = async_sessionmaker(
 )
 ```
 
-You can use the same factory for your own application dependencies:
+Use async SQLAlchemy URLs. For example, use `sqlite+aiosqlite:///...`, not
+`sqlite:///...`.
+
+You may also reuse the same factory in application dependencies:
 
 ```python
 from collections.abc import AsyncGenerator
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
 ```
 
-## Configure AuthLoom
+## 3. Create AuthLoom
 
-Create one `AuthLoom` instance with your session factory.
+Only `session_factory` is required.
 
 ```python
 from authloom import AuthLoom, AuthLoomConfig
@@ -119,30 +71,41 @@ auth = AuthLoom(
 )
 ```
 
-To customize cookie settings, pass `AuthLoomCookieSessionConfig`:
+## 4. Add The Minimum Migration Setup
+
+Before signup can work, the database must contain AuthLoom's tables.
+
+AuthLoom does not install Alembic or run migrations for you. Add AuthLoom metadata
+to your application-owned Alembic `target_metadata`:
 
 ```python
-from authloom import AuthLoom, AuthLoomConfig
-from authloom.settings import AuthLoomCookieSessionConfig
+from authloom.db import metadata as authloom_metadata
 
-auth = AuthLoom(
-    config=AuthLoomConfig(
-        session_factory=AsyncSessionLocal,
-        cookie_session=AuthLoomCookieSessionConfig(
-            cookie_name="authloom.auth",
-            ttl=60 * 60 * 24 * 7,
-            http_only=True,
-            secure=False,
-            samesite="lax",
-            path="/",
-        ),
-    )
-)
+target_metadata = authloom_metadata
 ```
 
-## Mount The Authentication Router
+If your app also has its own models, include both metadata objects:
 
-Mount AuthLoom's router on your FastAPI app:
+```python
+from authloom.db import metadata as authloom_metadata
+from myapp.db import Base
+
+target_metadata = [authloom_metadata, Base.metadata]
+```
+
+Then generate, review, and apply a migration:
+
+```bash
+alembic revision --autogenerate -m "add authloom tables"
+alembic upgrade head
+```
+
+See [Database and Migrations](database-and-migrations.md) for the complete
+beginner migration guide.
+
+## 5. Mount The Router Once
+
+For the localhost-only curl smoke test below, mount AuthLoom's router once:
 
 ```python
 from fastapi import FastAPI
@@ -153,10 +116,75 @@ app = FastAPI()
 app.include_router(create_auth_router(auth))
 ```
 
-### Add CSRF Protection
+The router is mounted at `/auth`.
 
-AuthLoom does not provide CSRF protection. If your application uses cookie
-authentication, pass your own FastAPI dependency to the mutation routes:
+## 6. Localhost-Only Curl Smoke Test
+
+This section is only for command-line testing on localhost. Do not use this
+router setup in a browser or deployed app until you add CSRF protection in the
+next section.
+
+Start your app, then use a cookie jar so curl keeps the session cookie:
+
+```bash
+rm -f cookies.txt
+```
+
+Create an account. The password is 15 characters to satisfy the default minimum
+length.
+
+```bash
+curl -i -c cookies.txt \
+  -X POST http://127.0.0.1:8000/auth/signup \
+  -H 'content-type: application/json' \
+  -d '{
+    "name": "Example User",
+    "email": "user@example.com",
+    "password": "abcdefghijklmno",
+    "password_confirm": "abcdefghijklmno"
+  }'
+```
+
+Read the current user with the cookie saved by signup:
+
+```bash
+curl -i -b cookies.txt http://127.0.0.1:8000/auth/me
+```
+
+Sign out and update the cookie jar:
+
+```bash
+curl -i -b cookies.txt -c cookies.txt \
+  -X POST http://127.0.0.1:8000/auth/signout
+```
+
+Sign in again and save the new session cookie:
+
+```bash
+curl -i -b cookies.txt -c cookies.txt \
+  -X POST http://127.0.0.1:8000/auth/signin \
+  -H 'content-type: application/json' \
+  -d '{
+    "email": "user@example.com",
+    "password": "abcdefghijklmno"
+  }'
+```
+
+Confirm the new session works:
+
+```bash
+curl -i -b cookies.txt http://127.0.0.1:8000/auth/me
+```
+
+## Mandatory CSRF For Browser Or Deployment Use
+
+AuthLoom uses cookies for browser authentication. Before using AuthLoom from a
+browser or deploying the app, add consumer-owned CSRF protection to every
+browser-facing state-changing route.
+
+For AuthLoom's built-in unsafe routes, pass your CSRF dependency when you create
+the router. Replace the single `include_router` call above; do not mount the
+router a second time.
 
 ```python
 from fastapi import Depends
@@ -173,41 +201,36 @@ app.include_router(
 )
 ```
 
-The dependency runs before AuthLoom's cookie-authenticated mutation routes and
-token-request routes. It does not apply to read-only routes such as
-`GET /auth/me` or to the clickable bearer-token email-verification completion
-route. Add the same dependency to your own mutation routes.
+This applies to built-in state-changing routes such as signup, signin, signout,
+password reset, password change, and token-request routes. Add the same kind of
+protection separately to your application-owned HTML or JSON mutation routes.
 
-You may use [`fastapi-csrf-protect`](https://pypi.org/project/fastapi-csrf-protect/),
-another library, or your own implementation. Configure CORS separately.
+AuthLoom does not require a specific CSRF library. The
+[credentials-auth example](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth)
+shows one complete implementation.
 
-The example application includes `fastapi-csrf-protect` only to demonstrate one
-possible integration. It is not installed with core AuthLoom and is not required
-for consumers using another CSRF solution.
+## Built-In Routes
 
-The router is mounted at `/auth` and provides:
-
-| Method | Path | Description |
+| Method | Path | Purpose |
 | --- | --- | --- |
 | `POST` | `/auth/signup` | Create a user, create a session, and set the session cookie. |
 | `POST` | `/auth/signin` | Verify credentials, create a session, and set the session cookie. |
-| `POST` | `/auth/signout` | Revoke the current session and delete the session cookie when present. |
+| `POST` | `/auth/signout` | Revoke the current session and delete the session cookie. |
 | `GET` | `/auth/me` | Return the current authenticated user. |
-| `POST` | `/auth/request-password-reset` | Create a password-reset token and invoke the consumer hook when configured. |
-| `POST` | `/auth/password-reset?token=<token_raw>` | Consume a valid reset token, update the password, and revoke every session. |
-| `POST` | `/auth/password-change` | Verify the current password, change the password, and revoke other sessions while preserving the current session when supplied. |
-| `POST` | `/auth/request-email-verification` | Create an email-verification token and invoke the consumer hook when configured. |
-| `GET` | `/auth/email-verification?token=<token_raw>` | Consume a valid verification token and mark the user's email verified. |
+| `POST` | `/auth/request-password-reset` | Request a password-reset token and invoke the configured hook. |
+| `POST` | `/auth/password-reset?token=...` | Complete password reset with a valid token. |
+| `POST` | `/auth/password-change` | Change the authenticated user's password. |
+| `POST` | `/auth/request-email-verification` | Request an email-verification token and invoke the configured hook. |
+| `GET` | `/auth/email-verification?token=...` | Consume the submitted verification token and mark the email verified. |
 
-Email verification links are intended to be opened directly from email. Treat the
-query token as bearer authorization: use HTTPS, avoid logging full URLs, and let
-AuthLoom reject invalid, expired, or reused tokens generically. If you attach
-CSRF dependencies to unsafe routes, do not require a CSRF token for this
-clickable verification-link route.
+`GET /auth/email-verification?token=...` is a clickable bearer-token link from
+email. Use HTTPS, avoid logging full URLs, and do not require a browser CSRF
+token for that route.
 
-## Use Required Authentication
+## Use Current-User Dependencies
 
-Use `auth.require_current_user` when a route must have a valid session cookie. It returns the AuthLoom `User` model or raises `401 Unauthorized`.
+Use `auth.require_current_user` when a route must have a valid session cookie. It
+returns the AuthLoom `User` model or raises `401 Unauthorized`.
 
 ```python
 from typing import Annotated
@@ -221,17 +244,10 @@ async def get_me(user: Annotated[User, Depends(auth.require_current_user)]):
     return {"id": user.id, "email": user.email, "name": user.name}
 ```
 
-## Use Optional Authentication
-
-Use `auth.optional_current_user` when a route should work for both anonymous and authenticated users. It returns `User | None`.
+Use `auth.optional_current_user` when a route should work for both anonymous and
+authenticated users. It returns `User | None`.
 
 ```python
-from typing import Annotated
-
-from fastapi import Depends
-
-from authloom.db import User
-
 @app.get("/homepage")
 async def homepage(
     user: Annotated[User | None, Depends(auth.optional_current_user)],
@@ -239,9 +255,12 @@ async def homepage(
     return {"authenticated": user is not None}
 ```
 
-## Clean Up Stale Sessions
+## Operations
 
-AuthLoom provides explicit cleanup for stale database sessions:
+### Clean Up Stale Sessions
+
+AuthLoom checks session validity during authentication. Cleanup is separate: it
+removes expired and revoked session rows to control database growth.
 
 ```python
 deleted_count = await auth.delete_stale_sessions()
@@ -257,144 +276,14 @@ deleted_count = await auth.delete_stale_sessions(
 )
 ```
 
-Expired and revoked sessions are deleted. AuthLoom provides the cleanup operation, but the consuming application decides when to run it. AuthLoom does not include cron, a worker, a CLI, or a scheduler.
+Your application decides when to run cleanup. AuthLoom does not include cron, a
+worker, a CLI, or a scheduler.
 
-Revoked sessions are deleted immediately by this cleanup method. If your application needs security auditing, record the relevant signout or revocation events elsewhere before deleting session rows.
+### Production Notes
 
-## Account Security Flows
-
-See [Account Security Flows](account-security-flows.md) for password reset,
-password change, email verification, session invalidation, consumer hooks, and
-browser security requirements.
-
-## Combine Metadata
-
-AuthLoom owns the `authloom_users`, `authloom_sessions`,
-`authloom_reset_password_tokens`, and `authloom_email_verification_tokens`
-SQLAlchemy models. Your application still owns Alembic and migration files.
-
-If your application has its own declarative base:
-
-```python
-from sqlalchemy.orm import DeclarativeBase
-
-class Base(DeclarativeBase):
-    pass
-```
-
-Combine AuthLoom metadata with application metadata in Alembic's `env.py`:
-
-```python
-from authloom.db import metadata as authloom_metadata
-from myapp.schema import Base
-
-target_metadata = [authloom_metadata, Base.metadata]
-```
-
-This lets Alembic autogenerate migrations for both AuthLoom tables and your application tables.
-
-If your application models reference AuthLoom users, import `User` and use its ID column in foreign keys:
-
-```python
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-
-from authloom.db import User
-from myapp.schema import Base
-
-class Post(Base):
-    __tablename__ = "posts"
-
-    id: Mapped[str] = mapped_column(primary_key=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey(User.id), nullable=False)
-```
-
-## Create Consumer-Owned Alembic Migrations
-
-AuthLoom does not ship migrations and does not run schema creation for you.
-
-Create migrations with your application's Alembic workflow:
-
-```bash
-alembic revision --autogenerate -m "add authloom tables"
-alembic upgrade head
-```
-
-Review the generated migration before applying it. It should include AuthLoom's
-`authloom_users`, `authloom_sessions`, `authloom_reset_password_tokens`, and
-`authloom_email_verification_tokens` tables, plus any application tables that
-are new or changed.
-
-Do not rely on `metadata.create_all()` for production. It can be useful for quick local experiments, but it is not a reviewed, ordered, repeatable migration history.
-
-## Cookie Settings
-
-AuthLoom's default cookie settings are intended for local development.
-
-Local HTTP development:
-
-```python
-AuthLoomCookieSessionConfig(
-    cookie_name="authloom.auth",
-    http_only=True,
-    secure=False,
-    samesite="lax",
-    path="/",
-)
-```
-
-HTTPS production:
-
-```python
-AuthLoomCookieSessionConfig(
-    cookie_name="authloom.auth",
-    http_only=True,
-    secure=True,
-    samesite="lax",
-    path="/",
-)
-```
-
-Use `samesite="none"` only when the browser must send cookies in a cross-site context. AuthLoom requires `secure=True` with `samesite="none"`.
-
-Set `domain` only when you need the cookie shared across a specific domain or subdomains. Leave it as `None` for most single-host applications.
-
-## Common Integration Mistakes
-
-- Using a synchronous SQLAlchemy URL such as `sqlite:///./app.db` or `postgresql://...` instead of an async URL.
-- Passing a synchronous `sessionmaker` instead of `async_sessionmaker`.
-- Forgetting to install the matching async database driver, such as `aiosqlite` or `asyncpg`.
-- Creating AuthLoom tables with `create_all()` locally and then forgetting to add real Alembic migrations.
-- Omitting `authloom.db.metadata` from Alembic `target_metadata`, which prevents autogenerate from seeing AuthLoom tables and security-flow tables.
-- Setting `secure=True` during plain HTTP local development, which prevents browsers from sending the cookie.
-- Leaving `secure=False` in HTTPS production.
-- Using `samesite="none"` without `secure=True`, which AuthLoom rejects during configuration validation.
-- Mounting the router more than once or creating multiple `AuthLoom` instances with inconsistent cookie settings.
-- Expecting AuthLoom to provide authorization rules; route-level authorization remains application-owned.
-
-## Current Limitations
-
-AuthLoom provides credentials signup/signin, cookie-backed database sessions,
-required and optional current-user dependencies, password hashing, email
-normalization, session expiry, signout revocation, session invalidation,
-password reset, password change, and email verification request and completion.
-
-It does not currently provide:
-
-- Rate limiting or brute-force protection.
-- Email delivery. Consumers own email providers and delivery hooks.
-- Multi-factor authentication.
-- OAuth or social login.
-- JWT access or refresh tokens.
-- Roles, permissions, organizations, or multi-tenancy.
-- Packaged database migrations or a migration CLI.
-- A CSRF token or cookie mechanism; configure consumer-owned protection for
-  cookie-authenticated browser applications.
-
-## Reference Implementations
-
-- FastAPI credentials-auth reference implementation: [`examples/credentials_auth/`](https://github.com/sreekarnv/authloom/tree/main/examples/credentials_auth)
-  runs with SQLite by default or PostgreSQL via `DATABASE_URL` and Docker
-  Compose. It is not a production application template.
-- Migration details: [Database And Migrations](database-and-migrations.md)
-- Cookie and security details: [Security](security-model.md)
+- Use HTTPS and production cookie settings. See [Configuration](configuration.md).
+- Keep migrations reviewed and application-owned. See
+  [Database and Migrations](database-and-migrations.md).
+- Read [Account Security Flows](account-security-flows.md) before enabling
+  password reset, password change, or email verification.
+- Route-level authorization for your own resources remains application-owned.
