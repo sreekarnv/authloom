@@ -1,27 +1,92 @@
 # Configuration
 
+Only `session_factory` is required.
+
 AuthLoom configuration is passed through `AuthLoomConfig`.
 
-## AuthLoomConfig
+## Required Configuration
 
-| Option | Description |
+```python
+from authloom import AuthLoom, AuthLoomConfig, create_auth_router
+
+auth = AuthLoom(
+    config=AuthLoomConfig(
+        session_factory=AsyncSessionLocal,
+    )
+)
+
+app.include_router(create_auth_router(auth))
+```
+
+`session_factory` must be an async SQLAlchemy
+`async_sessionmaker[AsyncSession]`.
+
+## Optional Customization
+
+| Option | Purpose |
 | --- | --- |
-| `session_factory` | Required async SQLAlchemy session factory. |
-| `cookie_session` | Cookie/session settings. |
+| `cookie_session` | Session cookie name, lifetime, and browser cookie attributes. |
 | `password_config` | Password length policy. |
-| `hooks` | Consumer callbacks for password-reset and email-verification tokens. |
+| `hooks` | Synchronous callbacks for password-reset and email-verification delivery. |
 
-## Cookie Settings
+## Local Cookie Example
 
-| Option | Default | Validation |
+This example keeps `secure=False` so cookies work over local HTTP.
+
+```python
+from authloom import AuthLoom, AuthLoomConfig, AuthLoomCookieSessionConfig, create_auth_router
+from authloom.settings import AuthLoomHooks, AuthLoomPasswordConfig
+
+auth = AuthLoom(
+    config=AuthLoomConfig(
+        session_factory=AsyncSessionLocal,
+        cookie_session=AuthLoomCookieSessionConfig(
+            cookie_name="authloom.auth",
+            ttl=60 * 60 * 24 * 7,
+            http_only=True,
+            secure=False,
+            samesite="lax",
+            path="/",
+        ),
+        password_config=AuthLoomPasswordConfig(
+            min_length=15,
+            max_length=64,
+        ),
+    )
+)
+```
+
+## Production Cookie Settings
+
+Use HTTPS and `secure=True` in production.
+
+```python
+from authloom import AuthLoomCookieSessionConfig
+
+cookie_session = AuthLoomCookieSessionConfig(
+    cookie_name="authloom.auth",
+    ttl=60 * 60 * 24 * 7,
+    http_only=True,
+    secure=True,
+    samesite="lax",
+    path="/",
+)
+```
+
+Use `samesite="none"` only when the browser must send cookies in a cross-site
+context. AuthLoom requires `secure=True` with `samesite="none"`.
+
+## Cookie Settings Reference
+
+| Option | Default | Notes |
 | --- | --- | --- |
 | `cookie_name` | `"authloom.auth"` | Must not be empty. |
-| `ttl` | `604800` | Must be greater than `0`. |
-| `http_only` | `True` | Boolean. |
-| `secure` | `False` | Boolean. Use `True` in production over HTTPS. |
-| `samesite` | `"lax"` | One of `"lax"`, `"strict"`, or `"none"`. `"none"` requires `secure=True`. |
-| `domain` | `None` | Optional cookie domain. |
-| `path` | `"/"` | Must not be empty and must start with `/`. |
+| `ttl` | `604800` | Lifetime in seconds. Must be greater than `0`. |
+| `http_only` | `True` | Keep enabled unless your app has a specific reason not to. |
+| `secure` | `False` | Use `True` for HTTPS production. |
+| `samesite` | `"lax"` | One of `"lax"`, `"strict"`, or `"none"`. |
+| `domain` | `None` | Leave unset for most single-host apps. |
+| `path` | `"/"` | Must start with `/`. |
 
 ## Password Settings
 
@@ -32,13 +97,15 @@ AuthLoom configuration is passed through `AuthLoomConfig`.
 
 ## Security Flow Hooks
 
-Hooks receive the destination email address and the raw, one-time token after
-AuthLoom has persisted its hash. AuthLoom does not send email; consumers use
-these hooks only to deliver password-reset and email-verification links.
+AuthLoom does not send email. Your application owns URL construction, message
+delivery, retries, logging policy, and provider configuration.
+
+Configure hooks when you use the built-in request routes and want AuthLoom to
+call your delivery functions:
 
 ```python
-from authloom import AuthLoom
-from authloom.settings import AuthLoomConfig, AuthLoomHooks
+from authloom import AuthLoom, AuthLoomConfig
+from authloom.settings import AuthLoomHooks
 
 auth = AuthLoom(
     config=AuthLoomConfig(
@@ -51,13 +118,26 @@ auth = AuthLoom(
 )
 ```
 
-The callback type is synchronous:
+Hooks are synchronous functions with this shape:
 
 ```python
 Callable[[str, str], None]
 ```
 
-Consumers are responsible for constructing links, sending messages, and
-preventing raw tokens from appearing in logs or persistent application data.
-AuthLoom owns token consumption for its built-in password-reset and
-email-verification completion routes.
+They receive `(email, raw_token)` after AuthLoom has persisted the token hash.
+Avoid logging or storing raw tokens.
+
+Built-in request routes invoke configured hooks:
+
+- `POST /auth/request-password-reset`
+- `POST /auth/request-email-verification`
+
+Direct service calls return tokens and do not invoke hooks:
+
+```python
+token = await auth.request_password_reset(email=email)
+token = await auth.request_email_verification(email=email)
+```
+
+When you call services directly, your application must deliver any returned token
+itself.
