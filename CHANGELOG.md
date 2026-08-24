@@ -4,10 +4,16 @@ All notable changes to AuthLoom will be documented in this file.
 
 ## Unreleased
 
+## 0.1.0b1 — 2026-08-24
+
 ### Changed
 
 - Renamed `AuthLoom.verify_token_reset_password()` to
   `AuthLoom.complete_password_reset()` before the beta API freeze.
+- Normalized passwords passed to direct `AuthLoom` service methods with the same
+  NFC behavior used by the HTTP routes.
+- Users created through direct service methods in earlier alpha releases with
+  non-NFC passwords may need to reset their passwords after upgrading.
 
 ### Added
 

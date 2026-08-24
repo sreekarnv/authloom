@@ -1,6 +1,6 @@
 [project]
 name = "authloom"
-version = "0.1.0a7"
+version = "0.1.0b1"
 description = "Authentication building blocks for FastAPI applications"
 readme = "README.md"
 authors = [
@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.12"
 keywords = ["fastapi", "authentication"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Framework :: FastAPI",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
