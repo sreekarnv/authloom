@@ -1,7 +1,11 @@
 import pytest
 from fastapi import FastAPI, status
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from authloom import AuthLoom, AuthLoomConfig
+from authloom.db.schema import ResetPasswordToken
 from authloom.exceptions import PasswordPolicyCode
 
 
@@ -70,6 +74,51 @@ async def test_password_change_with_valid_current_password_changes_password(
     assert other_session_response.status_code == status.HTTP_401_UNAUTHORIZED
     assert old_signin_response.status_code == status.HTTP_401_UNAUTHORIZED
     assert new_signin_response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.asyncio
+async def test_password_change_invalidates_unused_reset_tokens(
+    app: FastAPI,
+    async_engine: AsyncEngine,
+):
+    transport = ASGITransport(app=app)
+    session_maker = async_sessionmaker(
+        async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    auth = AuthLoom(config=AuthLoomConfig(session_factory=session_maker))
+    email = "test_password_change_invalidates_unused_reset_tokens@example.com"
+    old_value = "#SUPERSECRETPASSWORD#"
+    changed_value = "#CHANGEDSUPERSECRETPASSWORD#"
+    stale_value = "#STALESUPERSECRETPASSWORD#"
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        signup_response = await _signup(client, email, old_value)
+        stale_token_raw = await auth.request_password_reset(email=email)
+
+        change_response = await _change_password(client, old_value, changed_value)
+        stale_reset_response = await client.post(
+            f"/auth/password-reset?token={stale_token_raw}",
+            json={"password": stale_value, "password_confirm": stale_value},
+        )
+        changed_signin_response = await client.post(
+            "/auth/signin", json={"email": email, "password": changed_value}
+        )
+        stale_signin_response = await client.post(
+            "/auth/signin", json={"email": email, "password": stale_value}
+        )
+
+    async with session_maker() as session:
+        result = await session.execute(select(ResetPasswordToken))
+        reset_token = result.scalar_one()
+
+    assert signup_response.status_code == status.HTTP_201_CREATED
+    assert change_response.status_code == status.HTTP_200_OK
+    assert stale_reset_response.status_code == status.HTTP_400_BAD_REQUEST
+    assert changed_signin_response.status_code == status.HTTP_200_OK
+    assert stale_signin_response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert reset_token.used_at is not None
 
 
 @pytest.mark.asyncio
