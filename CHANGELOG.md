@@ -2,6 +2,15 @@
 
 All notable changes to AuthLoom will be documented in this file.
 
+## 0.1.0a7 — 2026-08-24
+
+### Security
+
+- Successful password reset now invalidates every outstanding unused
+  password-reset token for the affected user, not only the submitted token.
+- Successful authenticated password change now invalidates outstanding unused
+  password-reset tokens for the affected user.
+
 ## 0.1.0a6 — 2026-08-23
 
 ### Security
