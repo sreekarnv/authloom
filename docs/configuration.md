@@ -21,6 +21,13 @@ app.include_router(create_auth_router(auth))
 `session_factory` must be an async SQLAlchemy
 `async_sessionmaker[AsyncSession]`.
 
+The built-in router defaults to `/auth`. Pass `prefix` to use a different route
+prefix:
+
+```python
+app.include_router(create_auth_router(auth, prefix="/accounts"))
+```
+
 ## Optional Customization
 
 | Option | Purpose |
@@ -34,8 +41,14 @@ app.include_router(create_auth_router(auth))
 This example keeps `secure=False` so cookies work over local HTTP.
 
 ```python
-from authloom import AuthLoom, AuthLoomConfig, AuthLoomCookieSessionConfig, create_auth_router
-from authloom.settings import AuthLoomHooks, AuthLoomPasswordConfig
+from authloom import (
+    AuthLoom,
+    AuthLoomConfig,
+    AuthLoomCookieSessionConfig,
+    AuthLoomHooks,
+    AuthLoomPasswordConfig,
+    create_auth_router,
+)
 
 auth = AuthLoom(
     config=AuthLoomConfig(
@@ -105,7 +118,7 @@ call your delivery functions:
 
 ```python
 from authloom import AuthLoom, AuthLoomConfig
-from authloom.settings import AuthLoomHooks
+from authloom import AuthLoomHooks
 
 auth = AuthLoom(
     config=AuthLoomConfig(

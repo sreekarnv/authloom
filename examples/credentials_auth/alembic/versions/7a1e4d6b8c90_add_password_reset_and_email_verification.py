@@ -11,7 +11,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-import authloom
+from authloom.db import UTCDateTime
 
 revision: str = "7a1e4d6b8c90"
 down_revision: str | Sequence[str] | None = "2f77297b2da0"
@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.add_column(
         "authloom_users",
         sa.Column(
-            "email_verified_at", authloom.db.utils.time.UTCDateTime(), nullable=True
+            "email_verified_at", UTCDateTime(), nullable=True
         ),
     )
 
@@ -34,12 +34,12 @@ def upgrade() -> None:
         sa.Column("user_id", sa.VARCHAR(), nullable=False),
         sa.Column(
             "created_at",
-            authloom.db.utils.time.UTCDateTime(),
+            UTCDateTime(),
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
-        sa.Column("expires_at", authloom.db.utils.time.UTCDateTime(), nullable=False),
-        sa.Column("used_at", authloom.db.utils.time.UTCDateTime(), nullable=True),
+        sa.Column("expires_at", UTCDateTime(), nullable=False),
+        sa.Column("used_at", UTCDateTime(), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["authloom_users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -63,12 +63,12 @@ def upgrade() -> None:
         sa.Column("user_id", sa.VARCHAR(), nullable=False),
         sa.Column(
             "created_at",
-            authloom.db.utils.time.UTCDateTime(),
+            UTCDateTime(),
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
-        sa.Column("expires_at", authloom.db.utils.time.UTCDateTime(), nullable=False),
-        sa.Column("used_at", authloom.db.utils.time.UTCDateTime(), nullable=True),
+        sa.Column("expires_at", UTCDateTime(), nullable=False),
+        sa.Column("used_at", UTCDateTime(), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["authloom_users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )

@@ -2,6 +2,19 @@
 
 All notable changes to AuthLoom will be documented in this file.
 
+## Unreleased
+
+### Changed
+
+- Renamed `AuthLoom.verify_token_reset_password()` to
+  `AuthLoom.complete_password_reset()` before the beta API freeze.
+
+### Added
+
+- Exported `AuthLoomHooks` and `AuthLoomPasswordConfig` from the package root.
+- Added a `prefix` option to `create_auth_router()` for applications that mount
+  AuthLoom routes outside `/auth`.
+
 ## 0.1.0a7 — 2026-08-24
 
 ### Security

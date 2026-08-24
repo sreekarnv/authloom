@@ -1,7 +1,9 @@
 import pytest
 from fastapi import FastAPI, status
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from authloom import AuthLoom, AuthLoomConfig, create_auth_router
 from authloom.exceptions import PasswordPolicyCode
 
 
@@ -63,3 +65,33 @@ async def test_signup_accepts_creates_user_and_cookie(app: FastAPI):
 
     data = response.json()
     assert "user" in data and "message" in data
+
+
+@pytest.mark.asyncio
+async def test_auth_router_accepts_custom_prefix(async_engine: AsyncEngine):
+    session_maker = async_sessionmaker(
+        async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    auth = AuthLoom(config=AuthLoomConfig(session_factory=session_maker))
+
+    app = FastAPI()
+    app.include_router(create_auth_router(auth, prefix="/accounts"))
+
+    transport = ASGITransport(app=app)
+    body = {
+        "name": "Test User",
+        "email": "custom_prefix@example.com",
+        "password": "#Test12234567890#",
+        "password_confirm": "#Test12234567890#",
+    }
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        signup_response = await client.post("/accounts/signup", json=body)
+        current_user_response = await client.get("/accounts/me")
+        old_prefix_response = await client.post("/auth/signup", json=body)
+
+    assert signup_response.status_code == status.HTTP_201_CREATED
+    assert current_user_response.status_code == status.HTTP_200_OK
+    assert old_prefix_response.status_code == status.HTTP_404_NOT_FOUND

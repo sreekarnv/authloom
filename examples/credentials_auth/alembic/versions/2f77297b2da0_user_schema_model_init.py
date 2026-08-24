@@ -11,7 +11,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-import authloom
+from authloom.db import UTCDateTime
 
 # revision identifiers, used by Alembic.
 revision: str = "2f77297b2da0"
@@ -31,13 +31,13 @@ def upgrade() -> None:
         sa.Column("password", sa.VARCHAR(), nullable=False),
         sa.Column(
             "created_at",
-            authloom.db.utils.time.UTCDateTime(),
+            UTCDateTime(),
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
-            authloom.db.utils.time.UTCDateTime(),
+            UTCDateTime(),
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=True,
         ),
@@ -53,11 +53,11 @@ def upgrade() -> None:
         "authloom_sessions",
         sa.Column("id", sa.VARCHAR(), nullable=False),
         sa.Column("token_hash", sa.VARCHAR(length=64), nullable=False),
-        sa.Column("expires_at", authloom.db.utils.time.UTCDateTime(), nullable=False),
-        sa.Column("revoked_at", authloom.db.utils.time.UTCDateTime(), nullable=True),
+        sa.Column("expires_at", UTCDateTime(), nullable=False),
+        sa.Column("revoked_at", UTCDateTime(), nullable=True),
         sa.Column(
             "created_at",
-            authloom.db.utils.time.UTCDateTime(),
+            UTCDateTime(),
             server_default=sa.text("CURRENT_TIMESTAMP"),
             nullable=False,
         ),
