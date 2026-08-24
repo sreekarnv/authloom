@@ -67,7 +67,7 @@ This avoids revealing whether an account exists.
 Configure a hook if you want the built-in route to call your delivery function:
 
 ```python
-from authloom.settings import AuthLoomHooks
+from authloom import AuthLoomHooks
 
 hooks = AuthLoomHooks(
     on_request_password_reset=send_password_reset_email,
@@ -75,7 +75,9 @@ hooks = AuthLoomHooks(
 ```
 
 The hook receives `(email, raw_token)` after AuthLoom has stored the token hash.
-Your application builds the reset URL and sends it.
+Your application builds the reset URL and sends it. If you configured a custom
+router prefix with `create_auth_router(..., prefix="/accounts")`, use that same
+prefix in the link.
 
 ### Complete A Reset
 
@@ -88,7 +90,7 @@ POST /auth/password-reset?token=<token_raw>
 Direct service call:
 
 ```python
-await auth.verify_token_reset_password(
+await auth.complete_password_reset(
     token_raw=token_raw,
     new_password=new_password,
 )
@@ -153,7 +155,7 @@ invokes the configured hook when one is configured.
 Configure a hook if you want the built-in route to call your delivery function:
 
 ```python
-from authloom.settings import AuthLoomHooks
+from authloom import AuthLoomHooks
 
 hooks = AuthLoomHooks(
     on_request_email_verification=send_email_verification,
@@ -165,6 +167,8 @@ The built-in verification URL is:
 ```text
 /auth/email-verification?token=<token_raw>
 ```
+
+If you configured a custom router prefix, replace `/auth` with that prefix.
 
 The credentials-auth example demonstrates local email delivery:
 

@@ -6,11 +6,10 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from authloom import AuthLoom, AuthLoomConfig, create_auth_router
+from authloom import AuthLoom, AuthLoomConfig, AuthLoomHooks, create_auth_router
 from authloom.db.schema import EmailVerificationToken
 from authloom.db.utils.time import utc_now
 from authloom.service import hash_email_verification_token
-from authloom.settings import AuthLoomHooks
 
 
 def _session_maker(async_engine: AsyncEngine):

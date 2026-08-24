@@ -13,7 +13,13 @@ from pydantic_settings import BaseSettings
 
 from app.config import settings
 from app.database import AsyncSessionLocal
-from authloom import AuthLoom, create_auth_router
+from authloom import (
+    AuthLoom,
+    AuthLoomConfig,
+    AuthLoomCookieSessionConfig,
+    AuthLoomHooks,
+    create_auth_router,
+)
 from authloom.db import User
 from authloom.dtos import (
     ChangePasswordReqDto,
@@ -29,11 +35,6 @@ from authloom.exceptions import (
     InvalidPasswordResetTokenException,
     PasswordPolicyException,
     UserAlreadyExistsException,
-)
-from authloom.settings import (
-    AuthLoomConfig,
-    AuthLoomCookieSessionConfig,
-    AuthLoomHooks,
 )
 
 
@@ -417,7 +418,7 @@ async def reset_password_form(
             password=password,
             password_confirm=password_confirm,
         )
-        await auth.verify_token_reset_password(
+        await auth.complete_password_reset(
             token_raw=token,
             new_password=input_dto.password,
         )

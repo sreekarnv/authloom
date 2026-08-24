@@ -31,9 +31,10 @@ from authloom.service import AuthLoom
 def create_auth_router(
     auth: AuthLoom,
     *,
+    prefix: str = "/auth",
     unsafe_route_dependencies: Sequence[DependsParam] | None = None,
 ) -> APIRouter:
-    router = APIRouter(prefix="/auth", tags=["AuthLoom"])
+    router = APIRouter(prefix=prefix, tags=["AuthLoom"])
 
     @router.post(
         "/signup",
@@ -185,7 +186,7 @@ def create_auth_router(
     )
     async def verify_token_password_reset(token: str, input: PasswordResetHttpReqDto):
         try:
-            await auth.verify_token_reset_password(
+            await auth.complete_password_reset(
                 token_raw=token, new_password=input.password
             )
         except InvalidPasswordResetTokenException as exc:

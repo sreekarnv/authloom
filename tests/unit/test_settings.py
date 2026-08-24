@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from authloom.settings import AuthLoomCookieSessionConfig, AuthLoomPasswordConfig
+from authloom import AuthLoomCookieSessionConfig, AuthLoomPasswordConfig
 
 
 def test_cookie_session_allows_samesite_none_when_secure_true():

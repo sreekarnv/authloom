@@ -58,6 +58,9 @@ async def protected_route(
     return {"id": user.id, "email": user.email}
 ```
 
+The router defaults to `/auth`. Use `create_auth_router(auth, prefix="/accounts")`
+to choose a different route prefix.
+
 Before using this in an application:
 
 - Add AuthLoom metadata to your application-owned

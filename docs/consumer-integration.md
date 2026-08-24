@@ -116,7 +116,15 @@ app = FastAPI()
 app.include_router(create_auth_router(auth))
 ```
 
-The router is mounted at `/auth`.
+The router defaults to `/auth`. To use another prefix, pass `prefix`:
+
+```python
+app.include_router(create_auth_router(auth, prefix="/accounts"))
+```
+
+Then use `/accounts/signup`, `/accounts/signin`, and the same prefix for the
+other built-in routes. If your delivery hooks build password-reset or
+email-verification links, use the same prefix in those URLs.
 
 ## 6. Localhost-Only Curl Smoke Test
 
@@ -196,6 +204,7 @@ csrf_dependency = Depends(verify_csrf_request)
 app.include_router(
     create_auth_router(
         auth,
+        prefix="/auth",
         unsafe_route_dependencies=(csrf_dependency,),
     )
 )
@@ -226,6 +235,9 @@ shows one complete implementation.
 `GET /auth/email-verification?token=...` is a clickable bearer-token link from
 email. Use HTTPS, avoid logging full URLs, and do not require a browser CSRF
 token for that route.
+
+If you configured a custom router prefix, replace `/auth` with that prefix in the
+paths above.
 
 ## Use Current-User Dependencies
 
