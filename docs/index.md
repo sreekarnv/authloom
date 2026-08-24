@@ -4,8 +4,9 @@ AuthLoom is a Python 3.12 or newer authentication library for FastAPI applicatio
 
 It provides email/password signup and signin, cookie-backed database sessions,
 current-user dependencies, password reset, password change, and email
-verification. AuthLoom is pre-release software; APIs and database integration
-details may change before the first stable release.
+verification. AuthLoom is beta pre-release software; the beta series is for
+validating the public API, packaging, docs, and database integration before the
+first stable release.
 
 ## Mental Model
 
